@@ -1,5 +1,6 @@
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Pair;
@@ -61,16 +62,16 @@ public class Limelight implements Runnable {
               : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
       // If our angular velocity is greater than 80 degrees per second, ignore vision updates
       if (Math.abs(swerveStateSupplier.get().Speeds.omegaRadiansPerSecond)
-          > Units.degreesToRadians(80)) {
+              > Units.degreesToRadians(80)
+          || Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
         Thread.currentThread().interrupt();
-      } else if (LimelightHelpers.validPoseEstimate(mt)) {
-        double xyStdDev = calculateXYStdDev(mt);
-        double thetaStdDev = 
-          mt.isMegaTag2
-              ? 9999999
-              : calculateThetaStdDev(mt);
-        poseEstimates.add(new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev)));
       }
+      double xyStdDev = calculateXYStdDev(mt);
+      double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
+      SignalLogger.writeDoubleArray(
+          "Odometry/" + limelightName,
+          new double[] {mt.pose.getX(), mt.pose.getY(), mt.pose.getRotation().getDegrees()});
+      poseEstimates.add(new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev)));
     }
     for (Pair<PoseEstimate, Vector<N3>> pair : poseEstimates) {
       poseConsumer.addVisionMeasurement(
