@@ -63,12 +63,12 @@ public class Limelight implements Runnable {
       if (Math.abs(swerveStateSupplier.get().Speeds.omegaRadiansPerSecond)
           > Units.degreesToRadians(80)) {
         Thread.currentThread().interrupt();
-      } else if (mt != null && mt.tagCount != 0) {
+      } else if (LimelightHelpers.validPoseEstimate(mt)) {
         double xyStdDev = calculateXYStdDev(mt);
-        double thetaStdDev = 9999999;
-        if (DriverStation.isDisabled()) {
-          thetaStdDev = calculateThetaStdDev(mt);
-        }
+        double thetaStdDev = 
+          mt.isMegaTag2
+              ? 9999999
+              : calculateThetaStdDev(mt);
         poseEstimates.add(new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev)));
       }
     }
