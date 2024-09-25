@@ -57,10 +57,9 @@ public class Limelight implements Runnable {
     for (String limelightName : limelights) {
       LimelightHelpers.SetRobotOrientation(
           limelightName, swerveStateSupplier.get().Pose.getRotation().getDegrees(), 0, 0, 0, 0, 0);
-      PoseEstimate mt =
-          DriverStation.isEnabled()
-              ? LimelightHelpers.getBotPoseEstimate_wpiBlue(limelightName)
-              : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
+      PoseEstimate mt1 = LimelightHelpers.getBotPoseEstimate_wpiBlue(limelightName);
+      PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
+      PoseEstimate mt = DriverStation.isEnabled() ? mt1 : mt2;
       // If our angular velocity is greater than 80 degrees per second, ignore vision updates
       if (Math.abs(swerveStateSupplier.get().Speeds.omegaRadiansPerSecond)
               > Units.degreesToRadians(80)
@@ -69,6 +68,16 @@ public class Limelight implements Runnable {
       }
       double xyStdDev = calculateXYStdDev(mt);
       double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
+      if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(mt1))) {
+        SignalLogger.writeDoubleArray(
+            "Odometry/MT1/" + limelightName,
+            new double[] {mt1.pose.getX(), mt1.pose.getY(), mt1.pose.getRotation().getDegrees()});
+      }
+      if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(mt2))) {
+        SignalLogger.writeDoubleArray(
+            "Odometry/MT2/" + limelightName,
+            new double[] {mt2.pose.getX(), mt2.pose.getY(), mt2.pose.getRotation().getDegrees()});
+      }
       SignalLogger.writeDoubleArray(
           "Odometry/" + limelightName,
           new double[] {mt.pose.getX(), mt.pose.getY(), mt.pose.getRotation().getDegrees()});
