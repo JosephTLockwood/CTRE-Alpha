@@ -16,6 +16,7 @@ import frc.robot.LimelightHelpers.PoseEstimate;
 import frc.robot.generated.TunerConstants;
 import java.util.ArrayList;
 import java.util.function.Supplier;
+import java.util.Comparator;
 
 /**
  * Class that extends the Phoenix 6 SwerveDrivetrain class and implements Subsystem so it can easily
@@ -73,10 +74,11 @@ public class Limelight implements Runnable {
           new double[] {mt.pose.getX(), mt.pose.getY(), mt.pose.getRotation().getDegrees()});
       poseEstimates.add(new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev)));
     }
-    for (Pair<PoseEstimate, Vector<N3>> pair : poseEstimates) {
-      poseConsumer.addVisionMeasurement(
-          pair.getFirst().pose, pair.getFirst().timestampSeconds, pair.getSecond());
-    }
+    //Sort poseEstimates and send to consumer
+    poseEstimates.stream()
+      .sorted(Comparator.comparingDouble(pair -> pair.getFirst().timestampSeconds))
+      .forEach(pair -> poseConsumer.addVisionMeasurement(
+        pair.getFirst().pose, pair.getFirst().timestampSeconds, pair.getSecond()));
   }
 
   /**
