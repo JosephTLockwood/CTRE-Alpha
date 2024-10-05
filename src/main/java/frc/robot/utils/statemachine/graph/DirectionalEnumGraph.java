@@ -7,11 +7,12 @@ public class DirectionalEnumGraph<V extends Enum<V>, T extends TransitionBase<? 
   // Array where the index [1][2] = TransitionBase from state at ordinal 1 to state at ordinal 2
   private final Object[][] adjacencyMap;
   private final Class<V> enumType;
+  private final Class<T> transitionType;
 
-  public DirectionalEnumGraph(Class<V> enumType) {
+  public DirectionalEnumGraph(Class<V> enumType, Class<T> transitionType) {
     int c = enumType.getEnumConstants().length;
     this.enumType = enumType;
-
+    this.transitionType = transitionType;
     adjacencyMap = new Object[c][c];
   }
 
@@ -25,14 +26,15 @@ public class DirectionalEnumGraph<V extends Enum<V>, T extends TransitionBase<? 
     setEdge(transition);
   }
 
-  public void addEdges(T... transitions) {
+  
+  public void addEdges(Collection<T> transitions) {
     for (T transition : transitions) {
       addEdge(transition);
     }
   }
 
   private T getAsEdge(int x, int y) {
-    return (T) adjacencyMap[x][y];
+    return transitionType.cast(adjacencyMap[x][y]);
   }
 
   private V fromOrdinal(int ordinal) {
