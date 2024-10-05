@@ -60,6 +60,7 @@ repositories {
     }
     mavenLocal()
     mavenCentral()
+    gradlePluginPortal()
 }
 
 configurations.all {
