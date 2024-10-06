@@ -12,11 +12,14 @@ import com.ctre.phoenix6.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants.ClosedLoopOutputType;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants.SteerFeedbackType;
 import com.ctre.phoenix6.swerve.SwerveModuleConstantsFactory;
+import com.pathplanner.lib.config.ModuleConfig;
+import com.pathplanner.lib.config.RobotConfig;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.units.*;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 
@@ -65,6 +68,7 @@ public class TunerConstants {
   // Theoretical free speed (m/s) at 12 V applied output;
   // This needs to be tuned to your individual robot
   public static final Measure<Velocity<Distance>> kSpeedAt12Volts = MetersPerSecond.of(4.73);
+  public static final Measure<Velocity<Angle>> kRotationAt12Volts = RotationsPerSecond.of(1.0);
 
   // Every 1 rotation of the azimuth results in kCoupleRatio drive motor turns;
   // This may need to be tuned to your individual robot
@@ -72,7 +76,6 @@ public class TunerConstants {
 
   public static final double kDriveGearRatio = (50.0 / 16.0) * (16.0 / 28.0) * (45.0 / 15.0);
   public static final double kSteerGearRatio = 150.0 / 7.0;
-  public static final Measure<Distance> kWheelRadius = Inches.of(2.0);
 
   private static final boolean kInvertLeftSide = false;
   private static final boolean kInvertRightSide = true;
@@ -92,6 +95,27 @@ public class TunerConstants {
       new Matrix<>(VecBuilder.fill(0.003, 0.003, 0.0002));
   public static final double visionStandardDeviationXY = 0.01;
   public static final double visionStandardDeviationTheta = 0.01;
+
+  private static double robotWeight = Pounds.of(125).baseUnitMagnitude();
+
+  private static double robotMOI = 0.0;
+  private static Measure<Distance> trackwidth = Inches.of(45.5);
+  private static Measure<Distance> wheelbase = Inches.of(45.5);
+  private static Measure<Distance> kWheelRadius = Inches.of(2.0);
+  private static ModuleConfig moduleConfig =
+      new ModuleConfig(
+          kWheelRadius.in(Inches),
+          TunerConstants.kSpeedAt12Volts.baseUnitMagnitude(),
+          0,
+          DCMotor.getKrakenX60Foc(1).withReduction(TunerConstants.kDriveGearRatio),
+          80,
+          4);
+  public static final RobotConfig robotConfig =
+      new RobotConfig(
+          robotWeight, robotMOI, moduleConfig, trackwidth.in(Meters), wheelbase.in(Meters));
+
+  public static final double maxSteerVelocityRadsPerSec =
+      Units.RadiansPerSecond.convertFrom(10.0, RotationsPerSecond);
 
   private static final SwerveDrivetrainConstants DrivetrainConstants =
       new SwerveDrivetrainConstants()
