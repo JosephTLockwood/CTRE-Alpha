@@ -30,7 +30,6 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.generated.TunerConstants;
@@ -50,7 +49,7 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
               this::addVisionMeasurement,
               this::getState));
   private static final double kSimLoopPeriod = 0.005; // 5 ms
-  public static final double DEADBAND = 0.1;
+  private static final double DEADBAND = 0.1;
   private Notifier m_simNotifier = null;
   private double m_lastSimTime;
 
@@ -260,54 +259,49 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
     return run(() -> this.setControl(requestSupplier.get()));
   }
 
-  public Command joystickDrive(
+  public void joystickDrive(
       SwerveRequest.ApplyChassisSpeeds drive,
       DoubleSupplier xSupplier,
       DoubleSupplier ySupplier,
       DoubleSupplier omegaSupplier) {
-    return Commands.run(
-        () -> {
-          double linearMagnitude =
-              MathUtil.applyDeadband(
-                  Math.hypot(xSupplier.getAsDouble(), ySupplier.getAsDouble()), DEADBAND);
-          Rotation2d linearDirection =
-              new Rotation2d(xSupplier.getAsDouble(), ySupplier.getAsDouble());
-          double omega = MathUtil.applyDeadband(omegaSupplier.getAsDouble(), DEADBAND);
+    double linearMagnitude =
+        MathUtil.applyDeadband(
+            Math.hypot(xSupplier.getAsDouble(), ySupplier.getAsDouble()), DEADBAND);
+    Rotation2d linearDirection = new Rotation2d(xSupplier.getAsDouble(), ySupplier.getAsDouble());
+    double omega = MathUtil.applyDeadband(omegaSupplier.getAsDouble(), DEADBAND);
 
-          // Square values
-          linearMagnitude = linearMagnitude * linearMagnitude;
-          omega = Math.copySign(omega * omega, omega);
+    // Square values
+    linearMagnitude = linearMagnitude * linearMagnitude;
+    omega = Math.copySign(omega * omega, omega);
 
-          // Calcaulate new linear velocity
-          Translation2d linearVelocity =
-              new Pose2d(new Translation2d(), linearDirection)
-                  .transformBy(new Transform2d(linearMagnitude, 0.0, new Rotation2d()))
-                  .getTranslation();
+    // Calcaulate new linear velocity
+    Translation2d linearVelocity =
+        new Pose2d(new Translation2d(), linearDirection)
+            .transformBy(new Transform2d(linearMagnitude, 0.0, new Rotation2d()))
+            .getTranslation();
 
-          // Get robot relative vel
-          boolean isFlipped =
-              DriverStation.getAlliance().isPresent()
-                  && DriverStation.getAlliance().get() == Alliance.Red;
+    // Get robot relative vel
+    boolean isFlipped =
+        DriverStation.getAlliance().isPresent()
+            && DriverStation.getAlliance().get() == Alliance.Red;
 
-          double robotRelativeXVel =
-              linearVelocity.getX() * TunerConstants.kSpeedAt12Volts.baseUnitMagnitude();
-          double robotRelativeYVel =
-              linearVelocity.getY() * TunerConstants.kSpeedAt12Volts.baseUnitMagnitude();
-          double robotRelativeOmega = omega * TunerConstants.kRotationAt12Volts.baseUnitMagnitude();
+    double robotRelativeXVel =
+        linearVelocity.getX() * TunerConstants.kSpeedAt12Volts.baseUnitMagnitude();
+    double robotRelativeYVel =
+        linearVelocity.getY() * TunerConstants.kSpeedAt12Volts.baseUnitMagnitude();
+    double robotRelativeOmega = omega * TunerConstants.kRotationAt12Volts.baseUnitMagnitude();
 
-          ChassisSpeeds chassisSpeeds =
-              ChassisSpeeds.fromFieldRelativeSpeeds(
-                  robotRelativeXVel,
-                  robotRelativeYVel,
-                  robotRelativeOmega,
-                  isFlipped
-                      ? this.getState().Pose.getRotation().plus(new Rotation2d(Math.PI))
-                      : this.getState().Pose.getRotation());
+    ChassisSpeeds chassisSpeeds =
+        ChassisSpeeds.fromFieldRelativeSpeeds(
+            robotRelativeXVel,
+            robotRelativeYVel,
+            robotRelativeOmega,
+            isFlipped
+                ? this.getState().Pose.getRotation().plus(new Rotation2d(Math.PI))
+                : this.getState().Pose.getRotation());
 
-          // Convert to field relative speeds & send command
-          this.applyRequest(() -> drive.withSpeeds(setPointGenerator(chassisSpeeds)));
-        },
-        this);
+    // Convert to field relative speeds & send command
+    this.applyRequest(() -> drive.withSpeeds(setPointGenerator(chassisSpeeds)));
   }
 
   /**
