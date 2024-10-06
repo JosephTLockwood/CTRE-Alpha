@@ -64,10 +64,10 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
   private final SwerveRequest.ApplyChassisSpeeds AutoRequest =
       new SwerveRequest.ApplyChassisSpeeds();
 
-  private static final SwerveSetpointGenerator setpointGenerator =
+  private final SwerveSetpointGenerator setpointGenerator =
       new SwerveSetpointGenerator(
           TunerConstants.robotConfig, TunerConstants.maxSteerVelocityRadsPerSec);
-  private static SwerveSetpoint previousSetpoint;
+  private SwerveSetpoint previousSetpoint;
 
   private final SwerveRequest.SysIdSwerveTranslation TranslationCharacterization =
       new SwerveRequest.SysIdSwerveTranslation();
@@ -260,8 +260,7 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
     return run(() -> this.setControl(requestSupplier.get()));
   }
 
-  public static Command joystickDrive(
-      CommandSwerveDrivetrain drivetrain,
+  public Command joystickDrive(
       SwerveRequest.ApplyChassisSpeeds drive,
       DoubleSupplier xSupplier,
       DoubleSupplier ySupplier,
@@ -302,13 +301,13 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
                   robotRelativeYVel,
                   robotRelativeOmega,
                   isFlipped
-                      ? drivetrain.getState().Pose.getRotation().plus(new Rotation2d(Math.PI))
-                      : drivetrain.getState().Pose.getRotation());
+                      ? this.getState().Pose.getRotation().plus(new Rotation2d(Math.PI))
+                      : this.getState().Pose.getRotation());
 
           // Convert to field relative speeds & send command
-          drivetrain.applyRequest(() -> drive.withSpeeds(setPointGenerator(chassisSpeeds)));
+          this.applyRequest(() -> drive.withSpeeds(setPointGenerator(chassisSpeeds)));
         },
-        drivetrain);
+        this);
   }
 
   /**
@@ -317,7 +316,7 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
    *
    * @param speeds The desired robot-relative speeds
    */
-  public static ChassisSpeeds setPointGenerator(ChassisSpeeds speeds) {
+  public ChassisSpeeds setPointGenerator(ChassisSpeeds speeds) {
     // Note: it is important to not discretize speeds before or after
     // using the setpoint generator, as it will discretize them for you
     previousSetpoint =
