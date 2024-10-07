@@ -67,7 +67,7 @@ public class TunerConstants {
   // Theoretical free speed (m/s) at 12 V applied output;
   // This needs to be tuned to your individual robot
   public static final Measure<Velocity<Distance>> kSpeedAt12Volts = MetersPerSecond.of(4.73);
-  public static final Measure<Velocity<Angle>> kRotationAt12Volts = RotationsPerSecond.of(1.0);
+  public static final Measure<Velocity<Angle>> kRotationAt12Volts = RotationsPerSecond.of(0.75);
 
   // Every 1 rotation of the azimuth results in kCoupleRatio drive motor turns;
   // This may need to be tuned to your individual robot
@@ -117,7 +117,7 @@ public class TunerConstants {
           wheelbase.in(Meters));
 
   public static final double maxSteerVelocityRadsPerSec =
-      Units.RadiansPerSecond.convertFrom(10.0, RotationsPerSecond);
+      Units.RadiansPerSecond.convertFrom(0.75, RotationsPerSecond);
 
   private static final SwerveDrivetrainConstants DrivetrainConstants =
       new SwerveDrivetrainConstants()

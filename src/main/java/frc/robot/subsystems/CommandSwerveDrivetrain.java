@@ -293,7 +293,8 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
               linearVelocity.getX() * TunerConstants.kSpeedAt12Volts.baseUnitMagnitude();
           double robotRelativeYVel =
               linearVelocity.getY() * TunerConstants.kSpeedAt12Volts.baseUnitMagnitude();
-          double robotRelativeOmega = omega * TunerConstants.kRotationAt12Volts.baseUnitMagnitude();
+          double robotRelativeOmega =
+              omega * TunerConstants.kRotationAt12Volts.in(RadiansPerSecond);
 
           ChassisSpeeds chassisSpeeds =
               ChassisSpeeds.fromFieldRelativeSpeeds(
@@ -303,6 +304,7 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
                   isFlipped
                       ? this.getState().Pose.getRotation().plus(new Rotation2d(Math.PI))
                       : this.getState().Pose.getRotation());
+          // this.setControl(drive.withSpeeds(chassisSpeeds));
           this.setControl(drive.withSpeeds(setPointGenerator(chassisSpeeds)));
         },
         this);

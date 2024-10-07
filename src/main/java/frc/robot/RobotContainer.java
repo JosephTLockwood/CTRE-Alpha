@@ -20,12 +20,6 @@ import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 
 public class RobotContainer {
-  private double MaxSpeed =
-      TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts desired top speed
-  private double MaxAngularRate =
-      RotationsPerSecond.of(0.75)
-          .in(RadiansPerSecond); // 3/4 of a rotation per second max angular velocity
-
   /* Setting up bindings for necessary control of the swerve drive platform */
   private final CommandXboxController joystick = new CommandXboxController(0);
   public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
@@ -38,7 +32,8 @@ public class RobotContainer {
   private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
   private final SwerveRequest.PointWheelsAt point = new SwerveRequest.PointWheelsAt();
 
-  private final Telemetry logger = new Telemetry(MaxSpeed);
+  private final Telemetry logger =
+      new Telemetry(TunerConstants.kSpeedAt12Volts.in(MetersPerSecond));
 
   private void configureBindings() {
     // Note that X is defined as forward according to WPILib convention,
