@@ -152,8 +152,8 @@ public class TunerConstants {
   private static final Measure<Angle> kFrontLeftEncoderOffset = Rotations.of(0);
   private static final boolean kFrontLeftSteerMotorInverted = false;
 
-  private static final Measure<Distance> kFrontLeftXPos = Inches.of(22.75);
-  private static final Measure<Distance> kFrontLeftYPos = Inches.of(22.75);
+  private static final Measure<Distance> kFrontLeftXPos = trackwidth.divide(2);
+  private static final Measure<Distance> kFrontLeftYPos = wheelbase.divide(2);
 
   // Front Right
   private static final int kFrontRightDriveMotorId = 3;
@@ -162,8 +162,8 @@ public class TunerConstants {
   private static final Measure<Angle> kFrontRightEncoderOffset = Rotations.of(0);
   private static final boolean kFrontRightSteerMotorInverted = false;
 
-  private static final Measure<Distance> kFrontRightXPos = Inches.of(22.75);
-  private static final Measure<Distance> kFrontRightYPos = Inches.of(-22.75);
+  private static final Measure<Distance> kFrontRightXPos = trackwidth.divide(2);
+  private static final Measure<Distance> kFrontRightYPos = wheelbase.divide(2).negate();
 
   // Back Left
   private static final int kBackLeftDriveMotorId = 5;
@@ -172,8 +172,8 @@ public class TunerConstants {
   private static final Measure<Angle> kBackLeftEncoderOffset = Rotations.of(0);
   private static final boolean kBackLeftSteerMotorInverted = false;
 
-  private static final Measure<Distance> kBackLeftXPos = Inches.of(-22.75);
-  private static final Measure<Distance> kBackLeftYPos = Inches.of(22.75);
+  private static final Measure<Distance> kBackLeftXPos = trackwidth.divide(2).negate();
+  private static final Measure<Distance> kBackLeftYPos = wheelbase.divide(2);
 
   // Back Right
   private static final int kBackRightDriveMotorId = 7;
@@ -182,8 +182,8 @@ public class TunerConstants {
   private static final Measure<Angle> kBackRightEncoderOffset = Rotations.of(0);
   private static final boolean kBackRightSteerMotorInverted = false;
 
-  private static final Measure<Distance> kBackRightXPos = Inches.of(-22.75);
-  private static final Measure<Distance> kBackRightYPos = Inches.of(-22.75);
+  private static final Measure<Distance> kBackRightXPos = trackwidth.divide(2).negate();
+  private static final Measure<Distance> kBackRightYPos = wheelbase.divide(2).negate();
 
   public static final Measure<Distance> kRobotRadius =
       Meter.of(
