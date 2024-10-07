@@ -25,6 +25,10 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.units.Angle;
+import edu.wpi.first.units.Distance;
+import edu.wpi.first.units.Measure;
+import edu.wpi.first.units.Velocity;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Notifier;
@@ -66,7 +70,8 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
 
   private final SwerveSetpointGenerator setpointGenerator =
       new SwerveSetpointGenerator(
-          TunerConstants.robotConfig, TunerConstants.maxSteerVelocityRadsPerSec);
+          TunerConstants.robotConfig,
+          TunerConstants.maxSteerVelocityRadsPerSec.in(RadiansPerSecond));
   private SwerveSetpoint previousSetpoint;
 
   private final SwerveRequest.SysIdSwerveTranslation TranslationCharacterization =
@@ -289,13 +294,12 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
               DriverStation.getAlliance().isPresent()
                   && DriverStation.getAlliance().get() == Alliance.Red;
 
-          double robotRelativeXVel =
-              linearVelocity.getX() * TunerConstants.kSpeedAt12Volts.baseUnitMagnitude();
-          double robotRelativeYVel =
-              linearVelocity.getY() * TunerConstants.kSpeedAt12Volts.baseUnitMagnitude();
-          double robotRelativeOmega =
-              omega * TunerConstants.kRotationAt12Volts.in(RadiansPerSecond);
-
+          Measure<Velocity<Distance>> robotRelativeXVel =
+              TunerConstants.kSpeedAt12Volts.times(linearVelocity.getX());
+          Measure<Velocity<Distance>> robotRelativeYVel =
+              TunerConstants.kSpeedAt12Volts.times(linearVelocity.getY());
+          Measure<Velocity<Angle>> robotRelativeOmega =
+              TunerConstants.kRotationAt12Volts.times(omega);
           ChassisSpeeds chassisSpeeds =
               ChassisSpeeds.fromFieldRelativeSpeeds(
                   robotRelativeXVel,
@@ -304,8 +308,8 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
                   isFlipped
                       ? this.getState().Pose.getRotation().plus(new Rotation2d(Math.PI))
                       : this.getState().Pose.getRotation());
-          // this.setControl(drive.withSpeeds(chassisSpeeds));
-          this.setControl(drive.withSpeeds(setPointGenerator(chassisSpeeds)));
+          chassisSpeeds = setPointGenerator(chassisSpeeds);
+          this.setControl(drive.withSpeeds(chassisSpeeds));
         },
         this);
   }

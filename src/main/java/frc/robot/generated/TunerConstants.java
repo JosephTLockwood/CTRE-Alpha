@@ -66,8 +66,8 @@ public class TunerConstants {
 
   // Theoretical free speed (m/s) at 12 V applied output;
   // This needs to be tuned to your individual robot
-  public static final Measure<Velocity<Distance>> kSpeedAt12Volts = MetersPerSecond.of(4.73);
-  public static final Measure<Velocity<Angle>> kRotationAt12Volts = RotationsPerSecond.of(0.75);
+  public static final Measure<Velocity<Distance>> kSpeedAt12Volts = MetersPerSecond.of(4.830);
+  public static final Measure<Velocity<Angle>> kRotationAt12Volts = RadiansPerSecond.of(11.821);
 
   // Every 1 rotation of the azimuth results in kCoupleRatio drive motor turns;
   // This may need to be tuned to your individual robot
@@ -96,10 +96,12 @@ public class TunerConstants {
   public static final double visionStandardDeviationTheta = 0.01;
 
   private static Measure<Mass> robotWeight = Pounds.of(125);
-  private static double robotMOI = 10.0;
+  private static double robotMOI = 12.34;
   private static Measure<Distance> trackwidth = Inches.of(45.5);
   private static Measure<Distance> wheelbase = Inches.of(45.5);
   private static Measure<Distance> kWheelRadius = Inches.of(2.0);
+  public static Measure<Velocity<Angle>> maxSteerVelocityRadsPerSec = RotationsPerSecond.of(4.66);
+
   private static ModuleConfig moduleConfig =
       new ModuleConfig(
           kWheelRadius.in(Meters),
@@ -115,9 +117,6 @@ public class TunerConstants {
           moduleConfig,
           trackwidth.in(Meters),
           wheelbase.in(Meters));
-
-  public static final double maxSteerVelocityRadsPerSec =
-      Units.RadiansPerSecond.convertFrom(0.75, RotationsPerSecond);
 
   private static final SwerveDrivetrainConstants DrivetrainConstants =
       new SwerveDrivetrainConstants()
