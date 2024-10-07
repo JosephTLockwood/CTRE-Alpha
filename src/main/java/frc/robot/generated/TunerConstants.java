@@ -97,8 +97,8 @@ public class TunerConstants {
 
   private static Measure<Mass> robotWeight = Pounds.of(125);
   private static double robotMOI = 12.34;
-  private static Measure<Distance> trackwidth = Inches.of(45.5);
-  private static Measure<Distance> wheelbase = Inches.of(45.5);
+  private static Measure<Distance> trackwidth = Inches.of(22.75);
+  private static Measure<Distance> wheelbase = Inches.of(22.75);
   private static Measure<Distance> kWheelRadius = Inches.of(2.0);
   public static Measure<Velocity<Angle>> maxSteerVelocityRadsPerSec = RotationsPerSecond.of(4.66);
 
