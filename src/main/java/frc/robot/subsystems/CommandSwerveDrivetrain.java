@@ -10,12 +10,19 @@ import com.ctre.phoenix6.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.commands.PathPlannerAuto;
-import com.pathplanner.lib.util.HolonomicPathFollowerConfig;
-import com.pathplanner.lib.util.PIDConstants;
-import com.pathplanner.lib.util.ReplanningConfig;
+import com.pathplanner.lib.config.PIDConstants;
+import com.pathplanner.lib.controllers.PPHolonomicDriveController;
+import com.pathplanner.lib.util.DriveFeedforward;
+import com.pathplanner.lib.util.swerve.SwerveSetpoint;
+import com.pathplanner.lib.util.swerve.SwerveSetpointGenerator;
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.Matrix;
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -23,10 +30,12 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.generated.TunerConstants;
 import java.util.Arrays;
+import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 
 /**
@@ -41,6 +50,7 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
               this::addVisionMeasurement,
               this::getState));
   private static final double kSimLoopPeriod = 0.005; // 5 ms
+  private static final double DEADBAND = 0.1;
   private Notifier m_simNotifier = null;
   private double m_lastSimTime;
 
@@ -53,6 +63,11 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
 
   private final SwerveRequest.ApplyChassisSpeeds AutoRequest =
       new SwerveRequest.ApplyChassisSpeeds();
+
+  private final SwerveSetpointGenerator setpointGenerator =
+      new SwerveSetpointGenerator(
+          TunerConstants.robotConfig, TunerConstants.maxSteerVelocityRadsPerSec);
+  private SwerveSetpoint previousSetpoint;
 
   private final SwerveRequest.SysIdSwerveTranslation TranslationCharacterization =
       new SwerveRequest.SysIdSwerveTranslation();
@@ -175,19 +190,15 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
       driveBaseRadius = Math.max(driveBaseRadius, moduleLocation.getNorm());
     }
 
-    AutoBuilder.configureHolonomic(
+    AutoBuilder.configure(
         () -> this.getState().Pose, // Supplier of current robot pose
         this::seedFieldRelative, // Consumer for seeding pose against auto
         this::getCurrentRobotChassisSpeeds,
-        speeds ->
+        (speeds, feedforward) ->
             this.setControl(
                 AutoRequest.withSpeeds(speeds)), // Consumer of ChassisSpeeds to drive the robot
-        new HolonomicPathFollowerConfig(
-            new PIDConstants(10, 0, 0),
-            new PIDConstants(10, 0, 0),
-            TunerConstants.kSpeedAt12Volts.baseUnitMagnitude(),
-            driveBaseRadius,
-            new ReplanningConfig()),
+        new PPHolonomicDriveController(new PIDConstants(10, 0, 0), new PIDConstants(10, 0, 0)),
+        TunerConstants.robotConfig,
         () ->
             DriverStation.getAlliance().orElse(Alliance.Blue)
                 == Alliance.Red, // Assume the path needs to be
@@ -195,6 +206,16 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
         // this is normally
         // the case
         this); // Subsystem for requirements
+
+    ChassisSpeeds currentSpeeds =
+        this.getState().Speeds; // Method to get current robot-relative chassis speeds
+    SwerveModuleState[] currentStates =
+        this.getState().ModuleStates; // Method to get the current swerve module states
+    DriveFeedforward[] currentFeedforwards =
+        new DriveFeedforward
+            [TunerConstants.robotConfig.numModules]; // Method to get the current feedforwards
+    Arrays.fill(currentFeedforwards, new DriveFeedforward(0, 0, 0));
+    previousSetpoint = new SwerveSetpoint(currentSpeeds, currentStates, currentFeedforwards);
   }
 
   public void configureVision() {
@@ -237,6 +258,72 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
    */
   public Command applyRequest(Supplier<SwerveRequest> requestSupplier) {
     return run(() -> this.setControl(requestSupplier.get()));
+  }
+
+  public Command joystickDrive(
+      SwerveRequest.ApplyChassisSpeeds drive,
+      DoubleSupplier xSupplier,
+      DoubleSupplier ySupplier,
+      DoubleSupplier omegaSupplier) {
+    return Commands.run(
+        () -> {
+          double linearMagnitude =
+              MathUtil.applyDeadband(
+                  Math.hypot(xSupplier.getAsDouble(), ySupplier.getAsDouble()), DEADBAND);
+          Rotation2d linearDirection =
+              new Rotation2d(xSupplier.getAsDouble(), ySupplier.getAsDouble());
+          double omega = MathUtil.applyDeadband(omegaSupplier.getAsDouble(), DEADBAND);
+
+          // Square values
+          linearMagnitude = linearMagnitude * linearMagnitude;
+          omega = Math.copySign(omega * omega, omega);
+
+          // Calcaulate new linear velocity
+          Translation2d linearVelocity =
+              new Pose2d(new Translation2d(), linearDirection)
+                  .transformBy(new Transform2d(linearMagnitude, 0.0, new Rotation2d()))
+                  .getTranslation();
+
+          // Get robot relative vel
+          boolean isFlipped =
+              DriverStation.getAlliance().isPresent()
+                  && DriverStation.getAlliance().get() == Alliance.Red;
+
+          double robotRelativeXVel =
+              linearVelocity.getX() * TunerConstants.kSpeedAt12Volts.baseUnitMagnitude();
+          double robotRelativeYVel =
+              linearVelocity.getY() * TunerConstants.kSpeedAt12Volts.baseUnitMagnitude();
+          double robotRelativeOmega = omega * TunerConstants.kRotationAt12Volts.baseUnitMagnitude();
+
+          ChassisSpeeds chassisSpeeds =
+              ChassisSpeeds.fromFieldRelativeSpeeds(
+                  robotRelativeXVel,
+                  robotRelativeYVel,
+                  robotRelativeOmega,
+                  isFlipped
+                      ? this.getState().Pose.getRotation().plus(new Rotation2d(Math.PI))
+                      : this.getState().Pose.getRotation());
+          this.setControl(drive.withSpeeds(setPointGenerator(chassisSpeeds)));
+        },
+        this);
+  }
+
+  /**
+   * This method will take in desired robot-relative chassis speeds, generate a swerve setpoint,
+   * then set the target state for each module
+   *
+   * @param speeds The desired robot-relative speeds
+   */
+  public ChassisSpeeds setPointGenerator(ChassisSpeeds speeds) {
+    // Note: it is important to not discretize speeds before or after
+    // using the setpoint generator, as it will discretize them for you
+    previousSetpoint =
+        setpointGenerator.generateSetpoint(
+            previousSetpoint, // The previous setpoint
+            speeds, // The desired target speeds
+            0.02 // The loop time of the robot code, in seconds
+            );
+    return previousSetpoint.robotRelativeSpeeds();
   }
 
   @Override
