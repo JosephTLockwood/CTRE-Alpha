@@ -303,13 +303,7 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
                   isFlipped
                       ? this.getState().Pose.getRotation().plus(new Rotation2d(Math.PI))
                       : this.getState().Pose.getRotation());
-
-          // Convert to field relative speeds & send command
-          // Working
-          // this.setControl(drive.withSpeeds(chassisSpeeds));
-          // Not Working
           ChassisSpeeds setPointSpeeds = setPointGenerator(chassisSpeeds);
-          System.out.println(setPointSpeeds.toString());
           this.setControl(drive.withSpeeds(setPointGenerator(setPointSpeeds)));
         },
         this);
