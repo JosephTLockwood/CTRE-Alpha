@@ -42,8 +42,7 @@ public class TunerConstants {
   private static final ClosedLoopOutputType steerClosedLoopOutput = ClosedLoopOutputType.Voltage;
   // The closed-loop output type to use for the drive motors;
   // This affects the PID/FF gains for the drive motors
-  private static final ClosedLoopOutputType driveClosedLoopOutput =
-      ClosedLoopOutputType.TorqueCurrentFOC;
+  private static final ClosedLoopOutputType driveClosedLoopOutput = ClosedLoopOutputType.Voltage;
 
   // The stator current at which the wheels start to slip;
   // This needs to be tuned to your individual robot
@@ -96,23 +95,26 @@ public class TunerConstants {
   public static final double visionStandardDeviationXY = 0.01;
   public static final double visionStandardDeviationTheta = 0.01;
 
-  private static double robotWeight = Pounds.of(125).baseUnitMagnitude();
-
-  private static double robotMOI = 0.0;
+  private static Measure<Mass> robotWeight = Pounds.of(125);
+  private static double robotMOI = 10.0;
   private static Measure<Distance> trackwidth = Inches.of(45.5);
   private static Measure<Distance> wheelbase = Inches.of(45.5);
   private static Measure<Distance> kWheelRadius = Inches.of(2.0);
   private static ModuleConfig moduleConfig =
       new ModuleConfig(
-          kWheelRadius.in(Inches),
-          TunerConstants.kSpeedAt12Volts.baseUnitMagnitude(),
-          0,
+          kWheelRadius.in(Meters),
+          TunerConstants.kSpeedAt12Volts.in(MetersPerSecond),
+          1.0,
           DCMotor.getKrakenX60Foc(1).withReduction(TunerConstants.kDriveGearRatio),
           80,
           4);
   public static final RobotConfig robotConfig =
       new RobotConfig(
-          robotWeight, robotMOI, moduleConfig, trackwidth.in(Meters), wheelbase.in(Meters));
+          robotWeight.in(Kilogram),
+          robotMOI,
+          moduleConfig,
+          trackwidth.in(Meters),
+          wheelbase.in(Meters));
 
   public static final double maxSteerVelocityRadsPerSec =
       Units.RadiansPerSecond.convertFrom(10.0, RotationsPerSecond);

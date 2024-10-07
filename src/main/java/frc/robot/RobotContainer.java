@@ -44,18 +44,20 @@ public class RobotContainer {
     // Note that X is defined as forward according to WPILib convention,
     // and Y is defined as to the left according to WPILib convention.
     drivetrain.setDefaultCommand( // Drivetrain will execute this command periodically
-        drivetrain.run(
-            () ->
-                drivetrain.joystickDrive(
-                    drive,
-                    () -> -joystick.getLeftY(),
-                    () -> -joystick.getLeftX(),
-                    () -> -joystick.getRightX()) // Drive counterclockwise with negative X (left)
-            ));
+        drivetrain.joystickDrive(
+            drive,
+            () -> -joystick.getLeftY(),
+            () -> -joystick.getLeftX(),
+            () -> -joystick.getRightX()) // Drive counterclockwise with negative X (left)
+        );
 
     joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
     joystick.x().whileTrue(drivetrain.sysIdDynamic(Direction.kForward));
     joystick.y().whileTrue(drivetrain.sysIdDynamic(Direction.kReverse));
+    joystick
+        .rightBumper()
+        .whileTrue(
+            drivetrain.applyRequest(() -> point.withModuleDirection(Rotation2d.fromDegrees(0))));
     joystick.start().whileTrue(drivetrain.sysIdDynamic(Direction.kForward));
     joystick.back().whileTrue(drivetrain.sysIdDynamic(Direction.kReverse));
     joystick
