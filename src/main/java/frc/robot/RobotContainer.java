@@ -26,9 +26,13 @@ public class RobotContainer {
   public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
   private final SwerveRequests.ApplySpeedsSetpoint drive =
-      new SwerveRequests.ApplySpeedsSetpoint(() -> drivetrain.getState())
+      new SwerveRequests.ApplySpeedsSetpoint(drivetrain::getState)
           .withDriveRequestType(DriveRequestType.Velocity)
-          .withSteerRequestType(SteerRequestType.MotionMagicExpo); // I want field-centric
+          .withSteerRequestType(SteerRequestType.MotionMagicExpo)
+          .withDeadband(TunerConstants.kSpeedAt12Volts.times(0.1))
+          .withRotationalDeadband(
+              TunerConstants.kRotationAt12Volts.times(
+                  0.1)); // Add a 10% deadband based on the max speed
   // driving in open loop
   private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
   private final SwerveRequest.PointWheelsAt point = new SwerveRequest.PointWheelsAt();
