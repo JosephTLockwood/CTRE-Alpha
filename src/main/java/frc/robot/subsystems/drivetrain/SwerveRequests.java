@@ -32,7 +32,7 @@ import java.util.function.Supplier;
 public class SwerveRequests implements SwerveRequest {
 
   /** Sets the swerve drive modules to point to a specified direction. */
-  public static class ApplyChassisSetpoint implements NativeSwerveRequest {
+  public static class FieldCentricSwerveSetpoint implements NativeSwerveRequest {
     /**
      * The velocity in the X direction, in m/s. X is defined as forward according to WPILib
      * convention, so this determines how fast to travel forward.
@@ -87,7 +87,7 @@ public class SwerveRequests implements SwerveRequest {
      */
     public boolean DesaturateWheelSpeeds = true;
 
-    public ApplyChassisSetpoint(Supplier<SwerveDriveState> state) {
+    public FieldCentricSwerveSetpoint(Supplier<SwerveDriveState> state) {
       this.state = state;
       ChassisSpeeds currentSpeeds =
           state.get().Speeds; // Method to get current robot-relative chassis speeds
@@ -114,7 +114,7 @@ public class SwerveRequests implements SwerveRequest {
      * @param newVelocityX Parameter to modify
      * @return this object
      */
-    public ApplyChassisSetpoint withVelocityX(double newVelocityX) {
+    public FieldCentricSwerveSetpoint withVelocityX(double newVelocityX) {
       this.VelocityX = newVelocityX;
       return this;
     }
@@ -128,7 +128,7 @@ public class SwerveRequests implements SwerveRequest {
      * @param newVelocityX Parameter to modify
      * @return this object
      */
-    public ApplyChassisSetpoint withVelocityX(Measure<Velocity<Distance>> newVelocityX) {
+    public FieldCentricSwerveSetpoint withVelocityX(Measure<Velocity<Distance>> newVelocityX) {
       this.VelocityX = newVelocityX.in(MetersPerSecond);
       return this;
     }
@@ -142,7 +142,7 @@ public class SwerveRequests implements SwerveRequest {
      * @param newVelocityY Parameter to modify
      * @return this object
      */
-    public ApplyChassisSetpoint withVelocityY(double newVelocityY) {
+    public FieldCentricSwerveSetpoint withVelocityY(double newVelocityY) {
       this.VelocityY = newVelocityY;
       return this;
     }
@@ -156,7 +156,7 @@ public class SwerveRequests implements SwerveRequest {
      * @param newVelocityY Parameter to modify
      * @return this object
      */
-    public ApplyChassisSetpoint withVelocityY(Measure<Velocity<Distance>> newVelocityY) {
+    public FieldCentricSwerveSetpoint withVelocityY(Measure<Velocity<Distance>> newVelocityY) {
       this.VelocityY = newVelocityY.in(MetersPerSecond);
       return this;
     }
@@ -170,7 +170,7 @@ public class SwerveRequests implements SwerveRequest {
      * @param newRotationalRate Parameter to modify
      * @return this object
      */
-    public ApplyChassisSetpoint withRotationalRate(double newRotationalRate) {
+    public FieldCentricSwerveSetpoint withRotationalRate(double newRotationalRate) {
       this.RotationalRate = newRotationalRate;
       return this;
     }
@@ -184,7 +184,8 @@ public class SwerveRequests implements SwerveRequest {
      * @param newRotationalRate Parameter to modify
      * @return this object
      */
-    public ApplyChassisSetpoint withRotationalRate(Measure<Velocity<Angle>> newRotationalRate) {
+    public FieldCentricSwerveSetpoint withRotationalRate(
+        Measure<Velocity<Angle>> newRotationalRate) {
       this.RotationalRate = newRotationalRate.in(RadiansPerSecond);
       return this;
     }
@@ -197,7 +198,7 @@ public class SwerveRequests implements SwerveRequest {
      * @param newDeadband Parameter to modify
      * @return this object
      */
-    public ApplyChassisSetpoint withDeadband(double newDeadband) {
+    public FieldCentricSwerveSetpoint withDeadband(double newDeadband) {
       this.Deadband = newDeadband;
       return this;
     }
@@ -210,7 +211,7 @@ public class SwerveRequests implements SwerveRequest {
      * @param newDeadband Parameter to modify
      * @return this object
      */
-    public ApplyChassisSetpoint withDeadband(Measure<Velocity<Distance>> newDeadband) {
+    public FieldCentricSwerveSetpoint withDeadband(Measure<Velocity<Distance>> newDeadband) {
       this.Deadband = newDeadband.in(MetersPerSecond);
       return this;
     }
@@ -223,7 +224,7 @@ public class SwerveRequests implements SwerveRequest {
      * @param newRotationalDeadband Parameter to modify
      * @return this object
      */
-    public ApplyChassisSetpoint withRotationalDeadband(double newRotationalDeadband) {
+    public FieldCentricSwerveSetpoint withRotationalDeadband(double newRotationalDeadband) {
       this.RotationalDeadband = newRotationalDeadband;
       return this;
     }
@@ -236,7 +237,7 @@ public class SwerveRequests implements SwerveRequest {
      * @param newRotationalDeadband Parameter to modify
      * @return this object
      */
-    public ApplyChassisSetpoint withRotationalDeadband(
+    public FieldCentricSwerveSetpoint withRotationalDeadband(
         Measure<Velocity<Angle>> newRotationalDeadband) {
       this.RotationalDeadband = newRotationalDeadband.in(RadiansPerSecond);
       return this;
@@ -250,7 +251,7 @@ public class SwerveRequests implements SwerveRequest {
      * @param newDriveRequestType Parameter to modify
      * @return this object
      */
-    public ApplyChassisSetpoint withDriveRequestType(
+    public FieldCentricSwerveSetpoint withDriveRequestType(
         SwerveModule.DriveRequestType newDriveRequestType) {
       this.DriveRequestType = newDriveRequestType;
       return this;
@@ -264,7 +265,7 @@ public class SwerveRequests implements SwerveRequest {
      * @param newSteerRequestType Parameter to modify
      * @return this object
      */
-    public ApplyChassisSetpoint withSteerRequestType(
+    public FieldCentricSwerveSetpoint withSteerRequestType(
         SwerveModule.SteerRequestType newSteerRequestType) {
       this.SteerRequestType = newSteerRequestType;
       return this;
@@ -279,7 +280,7 @@ public class SwerveRequests implements SwerveRequest {
      * @param newDesaturateWheelSpeeds Parameter to modify
      * @return this object
      */
-    public ApplyChassisSetpoint withDesaturateWheelSpeeds(boolean newDesaturateWheelSpeeds) {
+    public FieldCentricSwerveSetpoint withDesaturateWheelSpeeds(boolean newDesaturateWheelSpeeds) {
       this.DesaturateWheelSpeeds = newDesaturateWheelSpeeds;
       return this;
     }
