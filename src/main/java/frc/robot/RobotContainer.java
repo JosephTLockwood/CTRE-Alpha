@@ -25,8 +25,8 @@ public class RobotContainer {
   private final CommandXboxController joystick = new CommandXboxController(0);
   public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
-  private final SwerveRequests.ApplySpeedsSetpoint drive =
-      new SwerveRequests.ApplySpeedsSetpoint(drivetrain::getState)
+  private final SwerveRequests.ApplyChassisSetpoint drive =
+      new SwerveRequests.ApplyChassisSetpoint(drivetrain::getState)
           .withDriveRequestType(DriveRequestType.Velocity)
           .withSteerRequestType(SteerRequestType.MotionMagicExpo)
           .withDeadband(TunerConstants.kSpeedAt12Volts.times(0.1))
