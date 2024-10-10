@@ -10,7 +10,6 @@ import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveModule.SteerRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
-import com.ctre.phoenix6.wpiutils.ReplayAutoEnable;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -87,7 +86,6 @@ public class RobotContainer {
   }
 
   public RobotContainer() {
-    ReplayAutoEnable.getInstance().start();
     configureBindings();
   }
 
