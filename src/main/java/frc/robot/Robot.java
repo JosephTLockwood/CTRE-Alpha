@@ -21,6 +21,8 @@ public class Robot extends TimedRobot {
     m_robotContainer = new RobotContainer();
     SignalLogger.start();
     HootReplay.loadFile("logs/sim_2024-10-09_23-37-39.hoot");
+    // This printed true
+    // System.out.println(HootReplay.isPlaying());
     FollowPathCommand.warmupCommand().schedule();
     PathfindingCommand.warmupCommand().schedule();
   }
