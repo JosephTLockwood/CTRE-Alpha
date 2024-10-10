@@ -169,6 +169,7 @@ public class PhotonVision implements Runnable {
     poseEstimate.tagCount = tagIDs.length;
 
     logPoseEstimate("Odometry/MT1/" + cameraName, poseEstimate);
+    logPoseEstimate("Odometry/MT2/" + cameraName, poseEstimate);
 
     return poseEstimate;
   }
