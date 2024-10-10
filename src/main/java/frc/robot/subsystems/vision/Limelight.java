@@ -1,4 +1,4 @@
-package frc.robot.subsystems;
+package frc.robot.subsystems.vision;
 
 import com.ctre.phoenix6.HootReplay;
 import com.ctre.phoenix6.HootReplay.SignalData;
@@ -35,14 +35,14 @@ public class Limelight implements Runnable {
    */
   private final String[] limelights;
 
-  private final LimelightVisionMeasurement poseConsumer;
+  private final VisionMeasurement poseConsumer;
   private final Supplier<SwerveDriveState> swerveStateSupplier;
 
-  private ArrayList<Pair<PoseEstimate, Vector<N3>>> poseEstimates;
+  private ArrayList<Pair<PoseEstimate, Vector<N3>>> poseEstimates = new ArrayList<>();
 
   public Limelight(
       String[] limelights,
-      LimelightVisionMeasurement poseConsumer,
+      VisionMeasurement poseConsumer,
       Supplier<SwerveDriveState> swerveStateSupplier) {
     this.limelights = limelights;
     this.poseConsumer = poseConsumer;
@@ -61,6 +61,9 @@ public class Limelight implements Runnable {
   private void updateVisionMeasurements() {
     for (String limelightName : limelights) {
       PoseEstimate mt = getVisionUpdate(limelightName);
+      if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
+        continue;
+      }
       double xyStdDev = calculateXYStdDev(mt);
       double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
       SignalLogger.writeDoubleArray(
@@ -103,7 +106,7 @@ public class Limelight implements Runnable {
     if (Math.abs(swerveStateSupplier.get().Speeds.omegaRadiansPerSecond)
             > Units.degreesToRadians(80)
         || Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
-      Thread.currentThread().interrupt();
+      return new PoseEstimate();
     }
 
     logPoseEstimate("Odometry/MT1/" + limelightName, mt1);
@@ -115,7 +118,7 @@ public class Limelight implements Runnable {
   private PoseEstimate getPoseEstimateFromReplay(String signalPath) {
     SignalData<double[]> signalData = HootReplay.getDoubleArray(signalPath);
     if (signalData.status != StatusCode.OK) {
-      Thread.currentThread().interrupt();
+      return new PoseEstimate();
     }
     double[] data = signalData.value;
     return new PoseEstimate(
@@ -170,7 +173,7 @@ public class Limelight implements Runnable {
   }
 
   @FunctionalInterface
-  public interface LimelightVisionMeasurement {
+  public interface VisionMeasurement {
     void addVisionMeasurement(
         Pose2d visionRobotPoseMeters,
         double timestampSeconds,

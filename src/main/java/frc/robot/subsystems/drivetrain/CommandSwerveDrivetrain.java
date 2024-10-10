@@ -17,6 +17,9 @@ import com.pathplanner.lib.util.swerve.SwerveSetpoint;
 import com.pathplanner.lib.util.swerve.SwerveSetpointGenerator;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.numbers.N1;
@@ -24,12 +27,14 @@ import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Notifier;
+import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.generated.TunerConstants;
-import frc.robot.subsystems.Limelight;
+import frc.robot.subsystems.vision.Limelight;
+import frc.robot.subsystems.vision.PhotonVision;
 import java.util.Arrays;
 import java.util.function.Supplier;
 
@@ -40,10 +45,16 @@ import java.util.function.Supplier;
 public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsystem {
   private final Thread limelightThread =
       new Thread(
-          new Limelight(
-              new String[] {"limelight-fl", "limelight-fr", "limelight-bl", "limelight-br"},
+          new Limelight(new String[] {"limelight-fl"}, this::addVisionMeasurement, this::getState));
+  private final Thread photonThread =
+      new Thread(
+          new PhotonVision(
+              "limelight-fl",
+              new Transform3d(
+                  new Translation3d(0.1, 0, 0.5), new Rotation3d(0, Math.toRadians(-15), 0)),
               this::addVisionMeasurement,
               this::getState));
+
   private static final double kSimLoopPeriod = 0.005; // 5 ms
   private static final double DEADBAND = 0.1;
   private Notifier m_simNotifier = null;
@@ -215,9 +226,15 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
   }
 
   public void configureVision() {
-    limelightThread.setName("LimeLight Thread");
-    limelightThread.setDaemon(true);
-    limelightThread.start();
+    if (RobotBase.isSimulation()) {
+      photonThread.setName("Photon Thread");
+      photonThread.setDaemon(true);
+      photonThread.start();
+    } else {
+      limelightThread.setName("Limelight Thread");
+      limelightThread.setDaemon(true);
+      limelightThread.start();
+    }
   }
 
   public Command getAutoPath(String pathName) {
