@@ -1,18 +1,23 @@
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.HootReplay;
+import com.ctre.phoenix6.HootReplay.SignalData;
 import com.ctre.phoenix6.SignalLogger;
+import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import frc.robot.LimelightHelpers;
 import frc.robot.LimelightHelpers.PoseEstimate;
+import frc.robot.LimelightHelpers.RawFiducial;
 import frc.robot.generated.TunerConstants;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -55,29 +60,9 @@ public class Limelight implements Runnable {
   /** Update the vision measurements. */
   private void updateVisionMeasurements() {
     for (String limelightName : limelights) {
-      LimelightHelpers.SetRobotOrientation(
-          limelightName, swerveStateSupplier.get().Pose.getRotation().getDegrees(), 0, 0, 0, 0, 0);
-      PoseEstimate mt1 = LimelightHelpers.getBotPoseEstimate_wpiBlue(limelightName);
-      PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
-      PoseEstimate mt = DriverStation.isEnabled() ? mt1 : mt2;
-      // If our angular velocity is greater than 80 degrees per second, ignore vision updates
-      if (Math.abs(swerveStateSupplier.get().Speeds.omegaRadiansPerSecond)
-              > Units.degreesToRadians(80)
-          || Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
-        Thread.currentThread().interrupt();
-      }
+      PoseEstimate mt = getVisionUpdate(limelightName);
       double xyStdDev = calculateXYStdDev(mt);
       double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
-      if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(mt1))) {
-        SignalLogger.writeDoubleArray(
-            "Odometry/MT1/" + limelightName,
-            new double[] {mt1.pose.getX(), mt1.pose.getY(), mt1.pose.getRotation().getDegrees()});
-      }
-      if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(mt2))) {
-        SignalLogger.writeDoubleArray(
-            "Odometry/MT2/" + limelightName,
-            new double[] {mt2.pose.getX(), mt2.pose.getY(), mt2.pose.getRotation().getDegrees()});
-      }
       SignalLogger.writeDoubleArray(
           "Odometry/" + limelightName,
           new double[] {mt.pose.getX(), mt.pose.getY(), mt.pose.getRotation().getDegrees()});
@@ -89,7 +74,87 @@ public class Limelight implements Runnable {
         .forEach(
             pair ->
                 poseConsumer.addVisionMeasurement(
-                    pair.getFirst().pose, pair.getFirst().timestampSeconds, pair.getSecond()));
+                    pair.getFirst().pose,
+                    pair.getFirst().timestampSeconds - pair.getFirst().latency,
+                    pair.getSecond()));
+  }
+
+  private PoseEstimate getVisionUpdate(String limelightName) {
+    LimelightHelpers.SetRobotOrientation(
+        limelightName, swerveStateSupplier.get().Pose.getRotation().getDegrees(), 0, 0, 0, 0, 0);
+    PoseEstimate mt1;
+    PoseEstimate mt2;
+    if (HootReplay.isPlaying()) {
+      SignalData<double[]> mt1Array = HootReplay.getDoubleArray("Odometry/MT1/" + limelightName);
+      SignalData<double[]> mt2Array = HootReplay.getDoubleArray("Odometry/MT2/" + limelightName);
+      if (mt1Array.status != StatusCode.OK || mt2Array.status != StatusCode.OK) {
+        Thread.currentThread().interrupt();
+      }
+      mt1 =
+          new PoseEstimate(
+              new Pose2d(
+                  mt1Array.value[0], mt1Array.value[1], Rotation2d.fromDegrees(mt1Array.value[2])),
+              mt1Array.value[3],
+              mt1Array.value[4],
+              (int) mt1Array.value[5],
+              0.0,
+              mt1Array.value[6],
+              0.0,
+              new RawFiducial[] {},
+              mt1Array.value[7] == 1);
+      mt2 =
+          new PoseEstimate(
+              new Pose2d(
+                  mt2Array.value[0], mt2Array.value[1], Rotation2d.fromDegrees(mt2Array.value[2])),
+              mt2Array.value[3],
+              mt2Array.value[4],
+              (int) mt2Array.value[5],
+              0.0,
+              mt2Array.value[6],
+              0.0,
+              new RawFiducial[] {},
+              mt2Array.value[7] == 1);
+    } else {
+      mt1 = LimelightHelpers.getBotPoseEstimate_wpiBlue(limelightName);
+      mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
+    }
+
+    PoseEstimate mt = DriverStation.isEnabled() ? mt1 : mt2;
+    // If our angular velocity is greater than 80 degrees per second, ignore vision updates
+    if (Math.abs(swerveStateSupplier.get().Speeds.omegaRadiansPerSecond)
+            > Units.degreesToRadians(80)
+        || Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
+      Thread.currentThread().interrupt();
+    }
+    if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(mt1))) {
+      SignalLogger.writeDoubleArray(
+          "Odometry/MT1/" + limelightName,
+          new double[] {
+            mt1.pose.getX(),
+            mt1.pose.getY(),
+            mt1.pose.getRotation().getDegrees(),
+            mt1.timestampSeconds,
+            mt1.latency,
+            mt1.tagCount,
+            mt1.avgTagDist,
+            mt1.isMegaTag2 ? 1 : 0
+          });
+    }
+    if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(mt2))) {
+      SignalLogger.writeDoubleArray(
+          "Odometry/MT2/" + limelightName,
+          new double[] {
+            mt2.pose.getX(),
+            mt2.pose.getY(),
+            mt2.pose.getRotation().getDegrees(),
+            mt2.timestampSeconds,
+            mt2.latency,
+            mt2.tagCount,
+            mt2.avgTagDist,
+            mt2.isMegaTag2 ? 1 : 0
+          });
+    }
+    return mt;
   }
 
   /**
