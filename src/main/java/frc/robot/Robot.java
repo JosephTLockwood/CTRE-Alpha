@@ -4,6 +4,7 @@
 
 package frc.robot;
 
+import com.ctre.phoenix6.HootReplay;
 import com.ctre.phoenix6.SignalLogger;
 import com.pathplanner.lib.commands.FollowPathCommand;
 import com.pathplanner.lib.commands.PathfindingCommand;
@@ -19,7 +20,7 @@ public class Robot extends TimedRobot {
   public Robot() {
     m_robotContainer = new RobotContainer();
     SignalLogger.start();
-    // HootReplay.loadFile("sim_2024-10-09_23-19-03.hoot");
+    HootReplay.loadFile("logs/sim_2024-10-09_23-37-39.hoot");
     FollowPathCommand.warmupCommand().schedule();
     PathfindingCommand.warmupCommand().schedule();
   }
