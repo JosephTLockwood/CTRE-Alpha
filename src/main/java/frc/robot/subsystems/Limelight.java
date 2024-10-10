@@ -82,79 +82,67 @@ public class Limelight implements Runnable {
   private PoseEstimate getVisionUpdate(String limelightName) {
     LimelightHelpers.SetRobotOrientation(
         limelightName, swerveStateSupplier.get().Pose.getRotation().getDegrees(), 0, 0, 0, 0, 0);
+
     PoseEstimate mt1;
     PoseEstimate mt2;
+
     if (HootReplay.isPlaying()) {
-      SignalData<double[]> mt1Array = HootReplay.getDoubleArray("Odometry/MT1/" + limelightName);
-      SignalData<double[]> mt2Array = HootReplay.getDoubleArray("Odometry/MT2/" + limelightName);
-      if (mt1Array.status != StatusCode.OK || mt2Array.status != StatusCode.OK) {
-        Thread.currentThread().interrupt();
-      }
-      mt1 =
-          new PoseEstimate(
-              new Pose2d(
-                  mt1Array.value[0], mt1Array.value[1], Rotation2d.fromDegrees(mt1Array.value[2])),
-              mt1Array.value[3],
-              mt1Array.value[4],
-              (int) mt1Array.value[5],
-              0.0,
-              mt1Array.value[6],
-              0.0,
-              new RawFiducial[] {},
-              mt1Array.value[7] == 1);
-      mt2 =
-          new PoseEstimate(
-              new Pose2d(
-                  mt2Array.value[0], mt2Array.value[1], Rotation2d.fromDegrees(mt2Array.value[2])),
-              mt2Array.value[3],
-              mt2Array.value[4],
-              (int) mt2Array.value[5],
-              0.0,
-              mt2Array.value[6],
-              0.0,
-              new RawFiducial[] {},
-              mt2Array.value[7] == 1);
+      mt1 = getPoseEstimateFromReplay("Odometry/MT1/" + limelightName);
+      mt2 = getPoseEstimateFromReplay("Odometry/MT2/" + limelightName);
     } else {
       mt1 = LimelightHelpers.getBotPoseEstimate_wpiBlue(limelightName);
       mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
     }
 
     PoseEstimate mt = DriverStation.isEnabled() ? mt1 : mt2;
-    // If our angular velocity is greater than 80 degrees per second, ignore vision updates
+
+    // If our angular velocity is greater than 80 degrees per second, or if the pose estimate is
+    // invalid, interrupt thread
     if (Math.abs(swerveStateSupplier.get().Speeds.omegaRadiansPerSecond)
             > Units.degreesToRadians(80)
-        || Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
+        || !LimelightHelpers.validPoseEstimate(mt)) {
       Thread.currentThread().interrupt();
     }
-    if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(mt1))) {
-      SignalLogger.writeDoubleArray(
-          "Odometry/MT1/" + limelightName,
-          new double[] {
-            mt1.pose.getX(),
-            mt1.pose.getY(),
-            mt1.pose.getRotation().getDegrees(),
-            mt1.timestampSeconds,
-            mt1.latency,
-            mt1.tagCount,
-            mt1.avgTagDist,
-            mt1.isMegaTag2 ? 1 : 0
-          });
-    }
-    if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(mt2))) {
-      SignalLogger.writeDoubleArray(
-          "Odometry/MT2/" + limelightName,
-          new double[] {
-            mt2.pose.getX(),
-            mt2.pose.getY(),
-            mt2.pose.getRotation().getDegrees(),
-            mt2.timestampSeconds,
-            mt2.latency,
-            mt2.tagCount,
-            mt2.avgTagDist,
-            mt2.isMegaTag2 ? 1 : 0
-          });
-    }
+
+    logPoseEstimate("Odometry/MT1/" + limelightName, mt1);
+    logPoseEstimate("Odometry/MT2/" + limelightName, mt2);
+
     return mt;
+  }
+
+  private PoseEstimate getPoseEstimateFromReplay(String signalPath) {
+    SignalData<double[]> signalData = HootReplay.getDoubleArray(signalPath);
+    if (signalData.status != StatusCode.OK) {
+      Thread.currentThread().interrupt();
+    }
+    double[] data = signalData.value;
+    return new PoseEstimate(
+        new Pose2d(data[0], data[1], Rotation2d.fromDegrees(data[2])),
+        data[3],
+        data[4],
+        (int) data[5],
+        0.0,
+        data[6],
+        0.0,
+        new RawFiducial[] {},
+        data[7] == 1);
+  }
+
+  private void logPoseEstimate(String signalPath, PoseEstimate poseEstimate) {
+    if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(poseEstimate))) {
+      SignalLogger.writeDoubleArray(
+          signalPath,
+          new double[] {
+            poseEstimate.pose.getX(),
+            poseEstimate.pose.getY(),
+            poseEstimate.pose.getRotation().getDegrees(),
+            poseEstimate.timestampSeconds,
+            poseEstimate.latency,
+            poseEstimate.tagCount,
+            poseEstimate.avgTagDist,
+            poseEstimate.isMegaTag2 ? 1 : 0
+          });
+    }
   }
 
   /**
