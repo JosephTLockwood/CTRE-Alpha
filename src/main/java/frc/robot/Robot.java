@@ -19,7 +19,7 @@ public class Robot extends TimedRobot {
   public Robot() {
     m_robotContainer = new RobotContainer();
     SignalLogger.start();
-    // HootReplay.loadFile("");
+    // HootReplay.loadFile("sim_2024-10-09_23-19-03.hoot");
     FollowPathCommand.warmupCommand().schedule();
     PathfindingCommand.warmupCommand().schedule();
   }

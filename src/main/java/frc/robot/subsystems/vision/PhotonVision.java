@@ -131,8 +131,7 @@ public class PhotonVision implements Runnable {
 
   private PoseEstimate getVisionUpdate(String cameraName) {
     visionSim.update(swerveStateSupplier.get().Pose);
-    System.out.println("Updating vision for " + cameraName);
-    // visionSim.getDebugField();
+    visionSim.getDebugField();
     PhotonPipelineResult results = cameraSim.getCamera().getLatestResult();
     double timestamp = results.getTimestampSeconds();
     Optional<Alliance> allianceOptional = DriverStation.getAlliance();
