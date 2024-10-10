@@ -70,7 +70,9 @@ public class Limelight implements Runnable {
     }
     // Sort poseEstimates and send to consumer
     poseEstimates.stream()
-        .sorted(Comparator.comparingDouble(pair -> pair.getFirst().timestampSeconds - pair.getFirst().latency))
+        .sorted(
+            Comparator.comparingDouble(
+                pair -> pair.getFirst().timestampSeconds - pair.getFirst().latency))
         .forEach(
             pair ->
                 poseConsumer.addVisionMeasurement(
