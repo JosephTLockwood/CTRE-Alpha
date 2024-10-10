@@ -70,7 +70,7 @@ public class Limelight implements Runnable {
     }
     // Sort poseEstimates and send to consumer
     poseEstimates.stream()
-        .sorted(Comparator.comparingDouble(pair -> pair.getFirst().timestampSeconds))
+        .sorted(Comparator.comparingDouble(pair -> pair.getFirst().timestampSeconds - pair.getFirst().latency))
         .forEach(
             pair ->
                 poseConsumer.addVisionMeasurement(
@@ -100,7 +100,7 @@ public class Limelight implements Runnable {
     // invalid, interrupt thread
     if (Math.abs(swerveStateSupplier.get().Speeds.omegaRadiansPerSecond)
             > Units.degreesToRadians(80)
-        || !LimelightHelpers.validPoseEstimate(mt)) {
+        || Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
       Thread.currentThread().interrupt();
     }
 
