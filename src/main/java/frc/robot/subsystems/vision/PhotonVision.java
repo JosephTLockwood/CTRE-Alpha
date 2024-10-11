@@ -20,10 +20,12 @@ import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import frc.robot.LimelightHelpers;
 import frc.robot.LimelightHelpers.PoseEstimate;
+import frc.robot.LimelightHelpers.RawFiducial;
 import frc.robot.generated.TunerConstants;
 import frc.robot.utils.FieldConstants;
 import frc.robot.utils.SignalHandler;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -143,38 +145,58 @@ public class PhotonVision implements Runnable {
       return new PoseEstimate();
     }
     double latencyMS = results.getLatencyMillis();
-    Pose3d poseEstimation;
     Optional<EstimatedRobotPose> estimatedPose = getEstimatedGlobalPose();
-    if (estimatedPose.isEmpty()) {
-      return new PoseEstimate();
-    }
-    poseEstimation = estimatedPose.get().estimatedPose;
-    double averageTagDistance = 0.0;
-    int[] tagIDs = new int[results.targets.size()];
-    for (int i = 0; i < results.targets.size(); i++) {
-      tagIDs[i] = results.targets.get(i).getFiducialId();
-      var tagPose = photonEstimator.getFieldTags().getTagPose(tagIDs[i]);
-      if (tagPose.isEmpty()) {
-        continue;
+    if (estimatedPose.isPresent()) {
+      Pose3d poseEstimation = estimatedPose.get().estimatedPose;
+      double averageTagDistance = 0.0;
+      int[] tagIDs = new int[results.targets.size()];
+      for (int i = 0; i < results.targets.size(); i++) {
+        tagIDs[i] = results.targets.get(i).getFiducialId();
+        var tagPose = photonEstimator.getFieldTags().getTagPose(tagIDs[i]);
+        if (tagPose.isEmpty()) {
+          continue;
+        }
+        averageTagDistance +=
+            tagPose
+                .get()
+                .toPose2d()
+                .getTranslation()
+                .getDistance(poseEstimation.getTranslation().toTranslation2d());
       }
-      averageTagDistance +=
-          tagPose
-              .get()
-              .toPose2d()
-              .getTranslation()
-              .getDistance(poseEstimation.getTranslation().toTranslation2d());
+      averageTagDistance /= tagIDs.length;
+      PoseEstimate mt1 =
+          makePoseEstimate(
+              poseEstimation.toPose2d(), timestamp, latencyMS, tagIDs, averageTagDistance, false);
+      PoseEstimate mt2 =
+          makePoseEstimate(
+              poseEstimation.toPose2d(), timestamp, latencyMS, tagIDs, averageTagDistance, true);
+
+      getOrWritePoseEstimate("Odometry/MT1/" + cameraName, mt1);
+      getOrWritePoseEstimate("Odometry/MT2/" + cameraName, mt2);
+
+      return DriverStation.isEnabled() ? mt1 : mt2;
     }
-    averageTagDistance /= tagIDs.length;
+    return new PoseEstimate();
+  }
+
+  private PoseEstimate makePoseEstimate(
+      Pose2d pose,
+      double timestampSeconds,
+      double latencyMS,
+      int[] tagIds,
+      double avgTagDist,
+      boolean isMegaTag2) {
     PoseEstimate poseEstimate = new PoseEstimate();
-    poseEstimate.pose = poseEstimation.toPose2d();
-    poseEstimate.timestampSeconds = timestamp;
+    poseEstimate.pose = pose;
+    poseEstimate.timestampSeconds = timestampSeconds;
     poseEstimate.latency = latencyMS / 1e3;
-    poseEstimate.avgTagDist = averageTagDistance;
-    poseEstimate.tagCount = tagIDs.length;
-
-    getOrWritePoseEstimate("Odometry/MT1/" + cameraName, poseEstimate);
-    getOrWritePoseEstimate("Odometry/MT2/" + cameraName, poseEstimate);
-
+    poseEstimate.tagCount = tagIds.length;
+    poseEstimate.avgTagDist = avgTagDist;
+    poseEstimate.isMegaTag2 = isMegaTag2;
+    poseEstimate.rawFiducials =
+        Arrays.stream(tagIds)
+            .mapToObj(id -> new RawFiducial(id, 0, 0, 0, 0, 0, 0))
+            .toArray(RawFiducial[]::new);
     return poseEstimate;
   }
 
