@@ -21,9 +21,6 @@ public class SignalHandler {
    */
   @SuppressWarnings("unchecked")
   public static <T> SignalData<T> readValue(String signalPath, T realTimeValue) {
-    SignalData<T> signalData = new SignalData<>();
-    signalData.name = signalPath;
-    signalData.timestampSeconds = Utils.getCurrentTimeSeconds();
     // Retrieve signal data from replay based on type
     if (realTimeValue instanceof byte[]) {
       return (SignalData<T>) HootReplay.getRaw(signalPath);
@@ -46,6 +43,9 @@ public class SignalHandler {
     } else if (realTimeValue instanceof double[]) {
       return (SignalData<T>) HootReplay.getDoubleArray(signalPath);
     } else {
+      SignalData<T> signalData = new SignalData<>();
+      signalData.name = signalPath;
+      signalData.timestampSeconds = Utils.getCurrentTimeSeconds();
       signalData.status = StatusCode.NotFound;
       return signalData;
     }
@@ -59,9 +59,6 @@ public class SignalHandler {
    * @return SignalData if replay is active, otherwise StatusCode of the write operation
    */
   public static <T> SignalData<T> writeValue(String signalPath, T realTimeValue) {
-    SignalData<T> signalData = new SignalData<>();
-    signalData.name = signalPath;
-    signalData.timestampSeconds = Utils.getCurrentTimeSeconds();
     // Write the real-time value if not in replay mode
     StatusCode status;
     if (realTimeValue instanceof byte[]) {
@@ -87,8 +84,10 @@ public class SignalHandler {
     } else {
       status = StatusCode.NotFound;
     }
-
     // Populate the SignalData with the real-time value and status
+    SignalData<T> signalData = new SignalData<>();
+    signalData.name = signalPath;
+    signalData.timestampSeconds = Utils.getCurrentTimeSeconds();
     signalData.status = status;
     signalData.value = realTimeValue;
     return signalData;
