@@ -2,9 +2,7 @@ package frc.robot.subsystems.drivetrain;
 
 import static edu.wpi.first.units.Units.*;
 
-import com.ctre.phoenix6.HootReplay;
 import com.ctre.phoenix6.SignalLogger;
-import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain;
 import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants;
@@ -222,9 +220,9 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
   }
 
   public void configureVision() {
-    System.out.println("Hoot Replay " + HootReplay.isPlaying());
-    StatusCode hootReplayStop = HootReplay.stop();
-    System.out.println(hootReplayStop.getName());
+    // System.out.println("Hoot Replay " + HootReplay.isPlaying());
+    // StatusCode hootReplayStop = HootReplay.stop();
+    // System.out.println(hootReplayStop.getName());
     // System.out.println("Hoot Replay " + HootReplay.isPlaying());
     if (RobotBase.isSimulation()) {
       photonThread.setName("Photon Thread");
