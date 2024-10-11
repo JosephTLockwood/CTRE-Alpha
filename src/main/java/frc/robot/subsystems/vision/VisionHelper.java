@@ -33,11 +33,9 @@ public final class VisionHelper {
   public static PoseEstimate filterPoseEstimate(
       PoseEstimate mt1, PoseEstimate mt2, Supplier<SwerveDriveState> swerveStateSupplier) {
     PoseEstimate mt = DriverStation.isEnabled() ? mt1 : mt2;
-    // If our angular velocity is greater than 80 degrees per second, or if the pose estimate is
-    // invalid, interrupt thread
+    // If our angular velocity is greater than 80 degrees per second
     if (Math.abs(swerveStateSupplier.get().Speeds.omegaRadiansPerSecond)
-            > Units.degreesToRadians(80)
-        || Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
+        > Units.degreesToRadians(80)) {
       return new PoseEstimate();
     }
     return mt;
