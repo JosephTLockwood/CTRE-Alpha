@@ -90,7 +90,7 @@ public class Limelight implements Runnable {
   private PoseEstimate getVisionUpdate(String limelightName) {
     PoseEstimate mt1;
     PoseEstimate mt2;
-    if (RobotMode.getMode() == Constants.Mode.REPLAY) {
+    if (RobotMode.getMode() == Mode.REPLAY) {
       mt1 = readPoseEstimate("Odometry/MT1/" + limelightName);
       mt2 = readPoseEstimate("Odometry/MT2/" + limelightName);
     } else {
