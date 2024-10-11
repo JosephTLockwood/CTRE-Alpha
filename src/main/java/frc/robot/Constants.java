@@ -24,7 +24,7 @@ package frc.robot;
 public final class Constants {
 
   public static Mode getMode() {
-    return Mode.REPLAY;
+    return Mode.SIM;
     // return Mode.REPLAY;
     // if (RobotBase.isReal()) {
     //   return Mode.REAL;

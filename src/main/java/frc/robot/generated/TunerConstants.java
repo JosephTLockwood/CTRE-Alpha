@@ -80,9 +80,9 @@ public class TunerConstants {
   private static final boolean kInvertLeftSide = false;
   private static final boolean kInvertRightSide = true;
 
-  //   private static final CANBus kCANBus = new CANBus("canivore");
-  private static final CANBus kCANBus =
-      new CANBus("canivore", "./logs/sim_2024-10-11_03-33-24.hoot");
+  private static final CANBus kCANBus = new CANBus("canivore");
+  //   private static final CANBus kCANBus =
+  //       new CANBus("canivore", "./logs/sim_2024-10-11_03-33-24.hoot");
 
   private static final int kPigeonId = 13;
 
