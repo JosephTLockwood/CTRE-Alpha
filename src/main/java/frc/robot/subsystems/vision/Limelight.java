@@ -1,8 +1,10 @@
 package frc.robot.subsystems.vision;
 
+import com.ctre.phoenix6.HootReplay;
 import com.ctre.phoenix6.HootReplay.SignalData;
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.StatusCode;
+import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Pair;
@@ -12,11 +14,12 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
-import frc.robot.RobotMode;
-import frc.robot.RobotMode.Mode;
+import edu.wpi.first.wpilibj.Timer;
 import frc.robot.LimelightHelpers;
 import frc.robot.LimelightHelpers.PoseEstimate;
 import frc.robot.LimelightHelpers.RawFiducial;
+import frc.robot.RobotMode;
+import frc.robot.RobotMode.Mode;
 import frc.robot.generated.TunerConstants;
 import frc.robot.utils.SignalHandler;
 import java.util.ArrayList;
@@ -55,6 +58,9 @@ public class Limelight implements Runnable {
 
   @Override
   public void run() {
+    if (RobotMode.getMode() == Mode.REPLAY) {
+      HootReplay.waitForPlaying(10);
+    }
     while (!Thread.interrupted()) {
       poseEstimates.clear();
       updateVisionMeasurements();
@@ -75,16 +81,15 @@ public class Limelight implements Runnable {
           new double[] {mt.pose.getX(), mt.pose.getY(), mt.pose.getRotation().getDegrees()});
       poseEstimates.add(new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev)));
     }
+    double timeDiff = Utils.getCurrentTimeSeconds() - Timer.getFPGATimestamp();
     // Sort poseEstimates and send to consumer
     poseEstimates.stream()
-        .sorted(
-            Comparator.comparingDouble(
-                pair -> pair.getFirst().timestampSeconds - pair.getFirst().latency))
+        .sorted(Comparator.comparingDouble(pair -> pair.getFirst().timestampSeconds))
         .forEach(
             pair ->
                 poseConsumer.addVisionMeasurement(
                     pair.getFirst().pose,
-                    pair.getFirst().timestampSeconds - pair.getFirst().latency,
+                    pair.getFirst().timestampSeconds - pair.getFirst().latency + timeDiff,
                     pair.getSecond()));
   }
 
@@ -103,12 +108,7 @@ public class Limelight implements Runnable {
       VisionHelper.writePoseEstimate("Odometry/MT2/" + limelightName, mt2);
     }
 
-    PoseEstimate mt = VisionHelper.filterPoseEstimate(mt1, mt2, swerveStateSupplier);
-    if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
-      return new PoseEstimate();
-    }
-
-    return mt;
+    return VisionHelper.filterPoseEstimate(mt1, mt2, swerveStateSupplier);
   }
 
   /**
@@ -134,9 +134,10 @@ public class Limelight implements Runnable {
   }
 
   private PoseEstimate readPoseEstimate(String signalPath) {
-    SignalData validPoseEstimate = validPoseEstimate = 
-        SignalHandler.readValue(signalPath + "/Valid", Boolean.FALSE);
-    if (validPoseEstimate.status != StatusCode.OK || Boolean.FALSE.equals(validPoseEstimate)) {
+    SignalData<Boolean> validPoseEstimate =
+        SignalHandler.readValue(signalPath + "/Valid/", Boolean.FALSE);
+    if (validPoseEstimate.status != StatusCode.OK
+        || Boolean.FALSE.equals(validPoseEstimate.value)) {
       return new PoseEstimate();
     }
     PoseEstimate poseEstimate =
@@ -148,7 +149,7 @@ public class Limelight implements Runnable {
   }
 
   private PoseEstimate readPoseEstimateFromSignal(SignalData<double[]> signalData) {
-    if (signalData.status != StatusCode.OK) {
+    if (signalData.status != StatusCode.OK || signalData.value.length != 8) {
       return new PoseEstimate();
     }
     double[] data = signalData.value;

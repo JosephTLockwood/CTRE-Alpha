@@ -1,6 +1,7 @@
 package frc.robot.subsystems.vision;
 
 import com.ctre.phoenix6.SignalLogger;
+import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Pair;
@@ -15,13 +16,13 @@ import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.RobotBase;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import frc.robot.LimelightHelpers;
 import frc.robot.LimelightHelpers.PoseEstimate;
 import frc.robot.LimelightHelpers.RawFiducial;
 import frc.robot.generated.TunerConstants;
 import frc.robot.utils.FieldConstants;
-import frc.robot.utils.SignalHandler;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -111,25 +112,22 @@ public class PhotonVision implements Runnable {
   /** Update the vision measurements. */
   private void updateVisionMeasurements() {
     PoseEstimate mt = getVisionUpdate(cameraName);
+    VisionHelper.writePoseEstimate("Odometry/" + cameraName, mt);
     if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
       return;
     }
     double xyStdDev = calculateXYStdDev(mt);
     double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
-    SignalHandler.writeValue(
-        "Odometry/" + cameraName,
-        new double[] {mt.pose.getX(), mt.pose.getY(), mt.pose.getRotation().getDegrees()});
     poseEstimates.add(new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev)));
+    double timeDiff = Utils.getCurrentTimeSeconds() - Timer.getFPGATimestamp();
     // Sort poseEstimates and send to consumer
     poseEstimates.stream()
-        .sorted(
-            Comparator.comparingDouble(
-                pair -> pair.getFirst().timestampSeconds - pair.getFirst().latency))
+        .sorted(Comparator.comparingDouble(pair -> pair.getFirst().timestampSeconds))
         .forEach(
             pair ->
                 poseConsumer.addVisionMeasurement(
                     pair.getFirst().pose,
-                    pair.getFirst().timestampSeconds - pair.getFirst().latency,
+                    pair.getFirst().timestampSeconds - pair.getFirst().latency + timeDiff,
                     pair.getSecond()));
   }
 
@@ -147,10 +145,12 @@ public class PhotonVision implements Runnable {
     if (estimatedPose.isPresent()) {
       Pose3d poseEstimation = estimatedPose.get().estimatedPose;
       double averageTagDistance = 0.0;
-      int[] tagIDs = new int[results.targets.size()];
-      for (int i = 0; i < results.targets.size(); i++) {
-        tagIDs[i] = results.targets.get(i).getFiducialId();
-        var tagPose = photonEstimator.getFieldTags().getTagPose(tagIDs[i]);
+      long[] tagIDs =
+          Arrays.stream(new int[results.targets.size()])
+              .mapToLong(id -> results.targets.get(id).getFiducialId())
+              .toArray();
+      for (int i = 0; i < tagIDs.length; i++) {
+        var tagPose = photonEstimator.getFieldTags().getTagPose((int) tagIDs[i]);
         if (tagPose.isEmpty()) {
           continue;
         }
@@ -164,43 +164,41 @@ public class PhotonVision implements Runnable {
       averageTagDistance /= tagIDs.length;
 
       PoseEstimate mt1 =
-          makePoseEstimate(
+          createPoseEstimate(
               poseEstimation.toPose2d(), timestamp, latencyMS, tagIDs, averageTagDistance, false);
       PoseEstimate mt2 =
-          makePoseEstimate(
+          createPoseEstimate(
               poseEstimation.toPose2d(), timestamp, latencyMS, tagIDs, averageTagDistance, true);
 
-      PoseEstimate mt = VisionHelper.filterPoseEstimate(mt1, mt2, swerveStateSupplier);
-      if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
-        return new PoseEstimate();
-      }
       VisionHelper.writePoseEstimate("Odometry/MT1/" + cameraName, mt1);
       VisionHelper.writePoseEstimate("Odometry/MT2/" + cameraName, mt2);
 
-      return mt;
+      return VisionHelper.filterPoseEstimate(mt1, mt2, swerveStateSupplier);
     }
     return new PoseEstimate();
   }
 
-  private PoseEstimate makePoseEstimate(
+  private PoseEstimate createPoseEstimate(
       Pose2d pose,
       double timestampSeconds,
       double latencyMS,
-      int[] tagIds,
+      long[] tagIds,
       double avgTagDist,
       boolean isMegaTag2) {
-    PoseEstimate poseEstimate = new PoseEstimate();
-    poseEstimate.pose = pose;
-    poseEstimate.timestampSeconds = timestampSeconds;
-    poseEstimate.latency = latencyMS / 1e3;
-    poseEstimate.tagCount = tagIds.length;
-    poseEstimate.avgTagDist = avgTagDist;
-    poseEstimate.isMegaTag2 = isMegaTag2;
-    poseEstimate.rawFiducials =
+    RawFiducial[] rawFiducials =
         Arrays.stream(tagIds)
-            .mapToObj(id -> new RawFiducial(id, 0, 0, 0, 0, 0, 0))
+            .mapToObj(id -> new RawFiducial((int) id, 0, 0, 0, 0, 0, 0))
             .toArray(RawFiducial[]::new);
-    return poseEstimate;
+    return new PoseEstimate(
+        pose,
+        timestampSeconds,
+        latencyMS,
+        tagIds.length,
+        0.0,
+        avgTagDist,
+        0.0,
+        rawFiducials,
+        isMegaTag2);
   }
 
   /** Updates the PhotonPoseEstimator and returns the estimated global pose. */

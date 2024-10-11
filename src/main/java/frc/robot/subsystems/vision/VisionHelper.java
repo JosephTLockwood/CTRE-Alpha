@@ -1,5 +1,6 @@
 package frc.robot.subsystems.vision;
 
+import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -14,6 +15,7 @@ public final class VisionHelper {
   private VisionHelper() {}
 
   public static void writePoseEstimate(String signalPath, PoseEstimate poseEstimate) {
+    LimelightHelpers.printPoseEstimate(poseEstimate);
     if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(poseEstimate))) {
       SignalHandler.writeValue(
           signalPath,
@@ -29,10 +31,10 @@ public final class VisionHelper {
           });
       long[] tagIds = Arrays.stream(poseEstimate.rawFiducials).mapToLong(id -> id.id).toArray();
       SignalHandler.writeValue(signalPath + "/Tags/", tagIds);
-      SignalHandler.writeValue(signalPath + "/Valid", Boolean.TRUE);
-    } else {
-      SignalHandler.writeValue(signalPath + "/Valid", Boolean.FALSE);
+      SignalLogger.writeBoolean(signalPath + "/Valid/", true);
+      return;
     }
+    SignalLogger.writeBoolean(signalPath + "/Valid/", false);
   }
 
   public static PoseEstimate filterPoseEstimate(
@@ -40,7 +42,8 @@ public final class VisionHelper {
     PoseEstimate mt = DriverStation.isEnabled() ? mt1 : mt2;
     // If our angular velocity is greater than 80 degrees per second
     if (Math.abs(swerveStateSupplier.get().Speeds.omegaRadiansPerSecond)
-        > Units.degreesToRadians(80)) {
+            > Units.degreesToRadians(80)
+        || Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
       return new PoseEstimate();
     }
     return mt;
