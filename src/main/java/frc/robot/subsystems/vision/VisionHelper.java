@@ -29,6 +29,9 @@ public final class VisionHelper {
           });
       long[] tagIds = Arrays.stream(poseEstimate.rawFiducials).mapToLong(id -> id.id).toArray();
       SignalHandler.writeValue(signalPath + "/Tags/", tagIds);
+      SignalHandler.writeValue(signalPath + "/Valid", Boolean.TRUE);
+    } else {
+      SignalHandler.writeValue(signalPath + "/Valid", Boolean.FALSE);
     }
   }
 

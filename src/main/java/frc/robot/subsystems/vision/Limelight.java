@@ -134,6 +134,11 @@ public class Limelight implements Runnable {
   }
 
   private PoseEstimate readPoseEstimate(String signalPath) {
+    Boolean validPoseEstimate =
+        readPoseEstimateFromSignal(SignalHandler.readValue(signalPath +  + "/Valid", Boolean.FALSE));
+    if (Boolean.FALSE.equals(validPoseEstimate)) {
+      return new PoseEstimate();
+    }
     PoseEstimate poseEstimate =
         readPoseEstimateFromSignal(SignalHandler.readValue(signalPath, new double[] {}));
     RawFiducial[] rawFiducials =
