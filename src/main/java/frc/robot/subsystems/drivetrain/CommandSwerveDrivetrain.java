@@ -27,11 +27,12 @@ import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Notifier;
-import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.robot.Constants;
+import frc.robot.Constants.Mode;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.vision.Limelight;
 import frc.robot.subsystems.vision.PhotonVision;
@@ -220,11 +221,7 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
   }
 
   public void configureVision() {
-    // System.out.println("Hoot Replay " + HootReplay.isPlaying());
-    // StatusCode hootReplayStop = HootReplay.stop();
-    // System.out.println(hootReplayStop.getName());
-    // System.out.println("Hoot Replay " + HootReplay.isPlaying());
-    if (RobotBase.isSimulation()) {
+    if (Constants.getMode() == Mode.SIM) {
       photonThread.setName("Photon Thread");
       photonThread.setDaemon(true);
       photonThread.start();

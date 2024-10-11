@@ -19,18 +19,11 @@ public class SignalHandler {
    * @param realTimeValue The real-time value to write if not in replay mode
    * @return SignalData if replay is active, otherwise StatusCode of the write operation
    */
-  public static <T> SignalData<T> getOrWriteSignal(String signalPath, T realTimeValue) {
+  @SuppressWarnings("unchecked")
+  public static <T> SignalData<T> readValue(String signalPath, T realTimeValue) {
     SignalData<T> signalData = new SignalData<>();
     signalData.name = signalPath;
     signalData.timestampSeconds = Utils.getCurrentTimeSeconds();
-    return HootReplay.isPlaying()
-        ? readValue(signalData, signalPath, realTimeValue)
-        : writeValue(signalData, signalPath, realTimeValue);
-  }
-
-  @SuppressWarnings("unchecked")
-  private static <T> SignalData<T> readValue(
-      SignalData<T> signalData, String signalPath, T realTimeValue) {
     // Retrieve signal data from replay based on type
     if (realTimeValue instanceof byte[]) {
       return (SignalData<T>) HootReplay.getRaw(signalPath);
@@ -58,8 +51,17 @@ public class SignalHandler {
     }
   }
 
-  private static <T> SignalData<T> writeValue(
-      SignalData<T> signalData, String signalPath, T realTimeValue) {
+  /**
+   * Retrieves a signal's value either from replay data (if available) or writes a real-time value.
+   *
+   * @param signalPath The path of the signal
+   * @param realTimeValue The real-time value to write if not in replay mode
+   * @return SignalData if replay is active, otherwise StatusCode of the write operation
+   */
+  public static <T> SignalData<T> writeValue(String signalPath, T realTimeValue) {
+    SignalData<T> signalData = new SignalData<>();
+    signalData.name = signalPath;
+    signalData.timestampSeconds = Utils.getCurrentTimeSeconds();
     // Write the real-time value if not in replay mode
     StatusCode status;
     if (realTimeValue instanceof byte[]) {
