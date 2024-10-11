@@ -2,7 +2,6 @@ package frc.robot.subsystems.vision;
 
 import com.ctre.phoenix6.HootReplay.SignalData;
 import com.ctre.phoenix6.SignalLogger;
-import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Pair;
@@ -164,6 +163,7 @@ public class PhotonVision implements Runnable {
                 .getDistance(poseEstimation.getTranslation().toTranslation2d());
       }
       averageTagDistance /= tagIDs.length;
+
       PoseEstimate mt1 =
           makePoseEstimate(
               poseEstimation.toPose2d(), timestamp, latencyMS, tagIDs, averageTagDistance, false);
@@ -171,10 +171,14 @@ public class PhotonVision implements Runnable {
           makePoseEstimate(
               poseEstimation.toPose2d(), timestamp, latencyMS, tagIDs, averageTagDistance, true);
 
-      getOrWritePoseEstimate("Odometry/MT1/" + cameraName, mt1);
-      getOrWritePoseEstimate("Odometry/MT2/" + cameraName, mt2);
+      PoseEstimate mt = VisionHelper.filterPoseEstimate(mt1, mt2, swerveStateSupplier);
+      if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
+        return new PoseEstimate();
+      }
+      VisionHelper.writePoseEstimate("Odometry/MT1/" + cameraName, mt1);
+      VisionHelper.writePoseEstimate("Odometry/MT2/" + cameraName, mt2);
 
-      return DriverStation.isEnabled() ? mt1 : mt2;
+      return mt;
     }
     return new PoseEstimate();
   }
@@ -215,25 +219,8 @@ public class PhotonVision implements Runnable {
     return visionEst;
   }
 
-  private SignalData<double[]> getOrWritePoseEstimate(
-      String signalPath, PoseEstimate poseEstimate) {
-    if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(poseEstimate))) {
-      SignalData<double[]> signalData = new SignalData<>();
-      signalData.status = StatusCode.NotFound;
-      return new SignalData<>();
-    }
-    return SignalHandler.getOrWriteSignal(
-        signalPath,
-        new double[] {
-          poseEstimate.pose.getX(),
-          poseEstimate.pose.getY(),
-          poseEstimate.pose.getRotation().getDegrees(),
-          poseEstimate.timestampSeconds,
-          poseEstimate.latency,
-          poseEstimate.tagCount,
-          poseEstimate.avgTagDist,
-          poseEstimate.isMegaTag2 ? 1 : 0
-        });
+  private SignalData<int[]> getOrWriteFiducials(String signalPath, int[] fiducials) {
+    return SignalHandler.getOrWriteSignal(signalPath, fiducials);
   }
 
   /** A Field2d for visualizing our robot and objects on the field. */

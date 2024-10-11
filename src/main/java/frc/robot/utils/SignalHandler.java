@@ -5,6 +5,8 @@ import com.ctre.phoenix6.HootReplay.SignalData;
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.Utils;
+import frc.robot.Constants;
+import frc.robot.Constants.Mode;
 
 public class SignalHandler {
 
@@ -23,7 +25,8 @@ public class SignalHandler {
     SignalData<T> signalData = new SignalData<>();
     signalData.name = signalPath;
     signalData.timestampSeconds = Utils.getCurrentTimeSeconds();
-    return HootReplay.isPlaying()
+    // return readValue(signalData, signalPath, realTimeValue);
+    return Constants.getMode() == Mode.REPLAY
         ? readValue(signalData, signalPath, realTimeValue)
         : writeValue(signalData, signalPath, realTimeValue);
   }
