@@ -24,9 +24,8 @@ public final class VisionHelper {
             poseEstimate.avgTagDist,
             poseEstimate.isMegaTag2 ? 1 : 0
           });
-      SignalHandler.getOrWriteSignal(
-          signalPath + "/Tags",
-          Arrays.stream(poseEstimate.rawFiducials).mapToInt(id -> id.id).toArray());
+      long[] tagIds = Arrays.stream(poseEstimate.rawFiducials).mapToLong(id -> id.id).toArray();
+      SignalHandler.getOrWriteSignal(signalPath + "/Tags/", tagIds);
     }
   }
 

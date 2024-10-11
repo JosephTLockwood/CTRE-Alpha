@@ -13,9 +13,6 @@
 
 package frc.robot;
 
-import com.ctre.phoenix6.HootReplay;
-import edu.wpi.first.wpilibj.RobotBase;
-
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean
  * constants. This class should not be used for any other purpose. All constants should be declared
@@ -27,13 +24,15 @@ import edu.wpi.first.wpilibj.RobotBase;
 public final class Constants {
 
   public static Mode getMode() {
-    if (RobotBase.isReal()) {
-      return Mode.REAL;
-    } else if (RobotBase.isSimulation() && HootReplay.isPlaying()) {
-      return Mode.REPLAY;
-    } else {
-      return Mode.SIM;
-    }
+    return Mode.REPLAY;
+    // return Mode.REPLAY;
+    // if (RobotBase.isReal()) {
+    //   return Mode.REAL;
+    // } else if (RobotBase.isSimulation() && HootReplay.isPlaying()) {
+    //   return Mode.REPLAY;
+    // } else {
+    //   return Mode.SIM;
+    // }
   }
 
   public enum Mode {

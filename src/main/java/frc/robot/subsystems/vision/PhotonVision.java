@@ -1,6 +1,5 @@
 package frc.robot.subsystems.vision;
 
-import com.ctre.phoenix6.HootReplay.SignalData;
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.Matrix;
@@ -217,10 +216,6 @@ public class PhotonVision implements Runnable {
         });
     if (newResult) lastEstTimestamp = latestTimestamp;
     return visionEst;
-  }
-
-  private SignalData<int[]> getOrWriteFiducials(String signalPath, int[] fiducials) {
-    return SignalHandler.getOrWriteSignal(signalPath, fiducials);
   }
 
   /** A Field2d for visualizing our robot and objects on the field. */

@@ -25,7 +25,6 @@ public class SignalHandler {
     SignalData<T> signalData = new SignalData<>();
     signalData.name = signalPath;
     signalData.timestampSeconds = Utils.getCurrentTimeSeconds();
-    // return readValue(signalData, signalPath, realTimeValue);
     return Constants.getMode() == Mode.REPLAY
         ? readValue(signalData, signalPath, realTimeValue)
         : writeValue(signalData, signalPath, realTimeValue);

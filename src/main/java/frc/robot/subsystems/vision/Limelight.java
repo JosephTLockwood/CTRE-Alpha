@@ -98,15 +98,14 @@ public class Limelight implements Runnable {
           limelightName, swerveStateSupplier.get().Pose.getRotation().getDegrees(), 0, 0, 0, 0, 0);
       mt1 = LimelightHelpers.getBotPoseEstimate_wpiBlue(limelightName);
       mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
+      VisionHelper.writePoseEstimate("Odometry/MT1/" + limelightName, mt1);
+      VisionHelper.writePoseEstimate("Odometry/MT2/" + limelightName, mt2);
     }
 
     PoseEstimate mt = VisionHelper.filterPoseEstimate(mt1, mt2, swerveStateSupplier);
     if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
       return new PoseEstimate();
     }
-
-    VisionHelper.writePoseEstimate("Odometry/MT1/" + limelightName, mt1);
-    VisionHelper.writePoseEstimate("Odometry/MT2/" + limelightName, mt2);
 
     return mt;
   }
@@ -137,7 +136,8 @@ public class Limelight implements Runnable {
     PoseEstimate poseEstimate =
         getPoseEstimateFromSignal(SignalHandler.getOrWriteSignal(signalPath, new double[] {}));
     RawFiducial[] rawFiducials =
-        getFiducialsFromSignal(SignalHandler.getOrWriteSignal(signalPath + "/Tags", new int[] {}));
+        getFiducialsFromSignal(
+            SignalHandler.getOrWriteSignal(signalPath + "/Tags/", new long[] {}));
     poseEstimate.rawFiducials = rawFiducials;
     return poseEstimate;
   }
@@ -159,12 +159,12 @@ public class Limelight implements Runnable {
         data[7] == 1);
   }
 
-  private RawFiducial[] getFiducialsFromSignal(SignalData<int[]> signalData) {
+  private RawFiducial[] getFiducialsFromSignal(SignalData<long[]> signalData) {
     if (signalData.status != StatusCode.OK) {
       return new RawFiducial[] {};
     }
     return Arrays.stream(signalData.value)
-        .mapToObj(id -> new RawFiducial(id, 0, 0, 0, 0, 0, 0))
+        .mapToObj(id -> new RawFiducial((int) id, 0, 0, 0, 0, 0, 0))
         .toArray(RawFiducial[]::new);
   }
 
