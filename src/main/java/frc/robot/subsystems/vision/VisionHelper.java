@@ -12,7 +12,7 @@ import java.util.function.Supplier;
 public final class VisionHelper {
   public static void writePoseEstimate(String signalPath, PoseEstimate poseEstimate) {
     if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(poseEstimate))) {
-      SignalHandler.getOrWriteSignal(
+      SignalHandler.writeValue(
           signalPath,
           new double[] {
             poseEstimate.pose.getX(),
@@ -25,7 +25,7 @@ public final class VisionHelper {
             poseEstimate.isMegaTag2 ? 1 : 0
           });
       long[] tagIds = Arrays.stream(poseEstimate.rawFiducials).mapToLong(id -> id.id).toArray();
-      SignalHandler.getOrWriteSignal(signalPath + "/Tags/", tagIds);
+      SignalHandler.writeValue(signalPath + "/Tags/", tagIds);
     }
   }
 

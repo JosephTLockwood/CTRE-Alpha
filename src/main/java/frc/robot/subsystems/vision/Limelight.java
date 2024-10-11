@@ -69,7 +69,7 @@ public class Limelight implements Runnable {
       }
       double xyStdDev = calculateXYStdDev(mt);
       double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
-      SignalHandler.getOrWriteSignal(
+      SignalHandler.writeValue(
           "Odometry/" + limelightName,
           new double[] {mt.pose.getX(), mt.pose.getY(), mt.pose.getRotation().getDegrees()});
       poseEstimates.add(new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev)));
@@ -134,10 +134,9 @@ public class Limelight implements Runnable {
 
   private PoseEstimate getPoseEstimate(String signalPath) {
     PoseEstimate poseEstimate =
-        getPoseEstimateFromSignal(SignalHandler.getOrWriteSignal(signalPath, new double[] {}));
+        getPoseEstimateFromSignal(SignalHandler.readValue(signalPath, new double[] {}));
     RawFiducial[] rawFiducials =
-        getFiducialsFromSignal(
-            SignalHandler.getOrWriteSignal(signalPath + "/Tags/", new long[] {}));
+        getFiducialsFromSignal(SignalHandler.readValue(signalPath + "/Tags/", new long[] {}));
     poseEstimate.rawFiducials = rawFiducials;
     return poseEstimate;
   }

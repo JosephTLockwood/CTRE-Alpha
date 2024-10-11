@@ -116,7 +116,7 @@ public class PhotonVision implements Runnable {
     }
     double xyStdDev = calculateXYStdDev(mt);
     double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
-    SignalHandler.getOrWriteSignal(
+    SignalHandler.writeValue(
         "Odometry/" + cameraName,
         new double[] {mt.pose.getX(), mt.pose.getY(), mt.pose.getRotation().getDegrees()});
     poseEstimates.add(new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev)));
