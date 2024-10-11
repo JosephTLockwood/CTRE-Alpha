@@ -1,6 +1,5 @@
 package frc.robot.subsystems.vision;
 
-import com.ctre.phoenix6.HootReplay;
 import com.ctre.phoenix6.HootReplay.SignalData;
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.StatusCode;
@@ -19,6 +18,7 @@ import frc.robot.LimelightHelpers;
 import frc.robot.LimelightHelpers.PoseEstimate;
 import frc.robot.LimelightHelpers.RawFiducial;
 import frc.robot.generated.TunerConstants;
+import frc.robot.utils.SignalHandler;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.function.Supplier;
@@ -47,6 +47,7 @@ public class Limelight implements Runnable {
     this.limelights = limelights;
     this.poseConsumer = poseConsumer;
     this.swerveStateSupplier = swerveStateSupplier;
+    SignalLogger.start();
   }
 
   @Override
@@ -66,7 +67,7 @@ public class Limelight implements Runnable {
       }
       double xyStdDev = calculateXYStdDev(mt);
       double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
-      SignalLogger.writeDoubleArray(
+      SignalHandler.getOrWriteSignal(
           "Odometry/" + limelightName,
           new double[] {mt.pose.getX(), mt.pose.getY(), mt.pose.getRotation().getDegrees()});
       poseEstimates.add(new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev)));
@@ -87,19 +88,15 @@ public class Limelight implements Runnable {
   private PoseEstimate getVisionUpdate(String limelightName) {
     LimelightHelpers.SetRobotOrientation(
         limelightName, swerveStateSupplier.get().Pose.getRotation().getDegrees(), 0, 0, 0, 0, 0);
+    PoseEstimate mt1 = LimelightHelpers.getBotPoseEstimate_wpiBlue(limelightName);
+    PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
+    SignalData<double[]> mt1Signal = getOrWritePoseEstimate("Odometry/MT1/" + limelightName, mt1);
+    SignalData<double[]> mt2Signal = getOrWritePoseEstimate("Odometry/MT2/" + limelightName, mt2);
 
-    PoseEstimate mt1;
-    PoseEstimate mt2;
-
-    if (HootReplay.isPlaying()) {
-      mt1 = getPoseEstimateFromReplay("Odometry/MT1/" + limelightName);
-      mt2 = getPoseEstimateFromReplay("Odometry/MT2/" + limelightName);
-    } else {
-      mt1 = LimelightHelpers.getBotPoseEstimate_wpiBlue(limelightName);
-      mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
-    }
-
-    PoseEstimate mt = DriverStation.isEnabled() ? mt1 : mt2;
+    PoseEstimate mt =
+        DriverStation.isEnabled()
+            ? getPoseEstimateFromSignal(mt1Signal)
+            : getPoseEstimateFromSignal(mt2Signal);
 
     // If our angular velocity is greater than 80 degrees per second, or if the pose estimate is
     // invalid, interrupt thread
@@ -109,14 +106,31 @@ public class Limelight implements Runnable {
       return new PoseEstimate();
     }
 
-    logPoseEstimate("Odometry/MT1/" + limelightName, mt1);
-    logPoseEstimate("Odometry/MT2/" + limelightName, mt2);
-
     return mt;
   }
 
-  private PoseEstimate getPoseEstimateFromReplay(String signalPath) {
-    SignalData<double[]> signalData = HootReplay.getDoubleArray(signalPath);
+  private SignalData<double[]> getOrWritePoseEstimate(
+      String signalPath, PoseEstimate poseEstimate) {
+    if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(poseEstimate))) {
+      SignalData<double[]> signalData = new SignalData<>();
+      signalData.status = StatusCode.NotFound;
+      return new SignalData<>();
+    }
+    return SignalHandler.getOrWriteSignal(
+        signalPath,
+        new double[] {
+          poseEstimate.pose.getX(),
+          poseEstimate.pose.getY(),
+          poseEstimate.pose.getRotation().getDegrees(),
+          poseEstimate.timestampSeconds,
+          poseEstimate.latency,
+          poseEstimate.tagCount,
+          poseEstimate.avgTagDist,
+          poseEstimate.isMegaTag2 ? 1 : 0
+        });
+  }
+
+  private PoseEstimate getPoseEstimateFromSignal(SignalData<double[]> signalData) {
     if (signalData.status != StatusCode.OK) {
       return new PoseEstimate();
     }
@@ -131,23 +145,6 @@ public class Limelight implements Runnable {
         0.0,
         new RawFiducial[] {},
         data[7] == 1);
-  }
-
-  private void logPoseEstimate(String signalPath, PoseEstimate poseEstimate) {
-    if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(poseEstimate))) {
-      SignalLogger.writeDoubleArray(
-          signalPath,
-          new double[] {
-            poseEstimate.pose.getX(),
-            poseEstimate.pose.getY(),
-            poseEstimate.pose.getRotation().getDegrees(),
-            poseEstimate.timestampSeconds,
-            poseEstimate.latency,
-            poseEstimate.tagCount,
-            poseEstimate.avgTagDist,
-            poseEstimate.isMegaTag2 ? 1 : 0
-          });
-    }
   }
 
   /**

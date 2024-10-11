@@ -2,7 +2,9 @@ package frc.robot.subsystems.drivetrain;
 
 import static edu.wpi.first.units.Units.*;
 
+import com.ctre.phoenix6.HootReplay;
 import com.ctre.phoenix6.SignalLogger;
+import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain;
 import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants;
@@ -56,7 +58,6 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
               this::getState));
 
   private static final double kSimLoopPeriod = 0.005; // 5 ms
-  private static final double DEADBAND = 0.1;
   private Notifier m_simNotifier = null;
   private double m_lastSimTime;
 
@@ -192,11 +193,6 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
   }
 
   private void configurePathPlanner() {
-    double driveBaseRadius = 0;
-    for (var moduleLocation : m_moduleLocations) {
-      driveBaseRadius = Math.max(driveBaseRadius, moduleLocation.getNorm());
-    }
-
     AutoBuilder.configure(
         () -> this.getState().Pose, // Supplier of current robot pose
         this::seedFieldRelative, // Consumer for seeding pose against auto
@@ -226,6 +222,10 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
   }
 
   public void configureVision() {
+    System.out.println("Hoot Replay " + HootReplay.isPlaying());
+    StatusCode hootReplayStop = HootReplay.stop();
+    System.out.println(hootReplayStop.getName());
+    // System.out.println("Hoot Replay " + HootReplay.isPlaying());
     if (RobotBase.isSimulation()) {
       photonThread.setName("Photon Thread");
       photonThread.setDaemon(true);

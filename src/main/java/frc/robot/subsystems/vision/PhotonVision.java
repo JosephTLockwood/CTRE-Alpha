@@ -1,6 +1,8 @@
 package frc.robot.subsystems.vision;
 
+import com.ctre.phoenix6.HootReplay.SignalData;
 import com.ctre.phoenix6.SignalLogger;
+import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Pair;
@@ -20,6 +22,7 @@ import frc.robot.LimelightHelpers;
 import frc.robot.LimelightHelpers.PoseEstimate;
 import frc.robot.generated.TunerConstants;
 import frc.robot.utils.FieldConstants;
+import frc.robot.utils.SignalHandler;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Optional;
@@ -94,6 +97,7 @@ public class PhotonVision implements Runnable {
     cameraSim.enableDrawWireframe(true);
     this.poseConsumer = poseConsumer;
     this.swerveStateSupplier = swerveStateSupplier;
+    SignalLogger.start();
   }
 
   @Override
@@ -112,7 +116,7 @@ public class PhotonVision implements Runnable {
     }
     double xyStdDev = calculateXYStdDev(mt);
     double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
-    SignalLogger.writeDoubleArray(
+    SignalHandler.getOrWriteSignal(
         "Odometry/" + cameraName,
         new double[] {mt.pose.getX(), mt.pose.getY(), mt.pose.getRotation().getDegrees()});
     poseEstimates.add(new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev)));
@@ -168,8 +172,8 @@ public class PhotonVision implements Runnable {
     poseEstimate.avgTagDist = averageTagDistance;
     poseEstimate.tagCount = tagIDs.length;
 
-    logPoseEstimate("Odometry/MT1/" + cameraName, poseEstimate);
-    logPoseEstimate("Odometry/MT2/" + cameraName, poseEstimate);
+    getOrWritePoseEstimate("Odometry/MT1/" + cameraName, poseEstimate);
+    getOrWritePoseEstimate("Odometry/MT2/" + cameraName, poseEstimate);
 
     return poseEstimate;
   }
@@ -189,21 +193,25 @@ public class PhotonVision implements Runnable {
     return visionEst;
   }
 
-  private void logPoseEstimate(String signalPath, PoseEstimate poseEstimate) {
-    if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(poseEstimate))) {
-      SignalLogger.writeDoubleArray(
-          signalPath,
-          new double[] {
-            poseEstimate.pose.getX(),
-            poseEstimate.pose.getY(),
-            poseEstimate.pose.getRotation().getDegrees(),
-            poseEstimate.timestampSeconds,
-            poseEstimate.latency,
-            poseEstimate.tagCount,
-            poseEstimate.avgTagDist,
-            poseEstimate.isMegaTag2 ? 1 : 0
-          });
+  private SignalData<double[]> getOrWritePoseEstimate(
+      String signalPath, PoseEstimate poseEstimate) {
+    if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(poseEstimate))) {
+      SignalData<double[]> signalData = new SignalData<>();
+      signalData.status = StatusCode.NotFound;
+      return new SignalData<>();
     }
+    return SignalHandler.getOrWriteSignal(
+        signalPath,
+        new double[] {
+          poseEstimate.pose.getX(),
+          poseEstimate.pose.getY(),
+          poseEstimate.pose.getRotation().getDegrees(),
+          poseEstimate.timestampSeconds,
+          poseEstimate.latency,
+          poseEstimate.tagCount,
+          poseEstimate.avgTagDist,
+          poseEstimate.isMegaTag2 ? 1 : 0
+        });
   }
 
   /** A Field2d for visualizing our robot and objects on the field. */
