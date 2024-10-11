@@ -10,6 +10,9 @@ import java.util.Arrays;
 import java.util.function.Supplier;
 
 public final class VisionHelper {
+
+  private VisionHelper() {}
+
   public static void writePoseEstimate(String signalPath, PoseEstimate poseEstimate) {
     if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(poseEstimate))) {
       SignalHandler.writeValue(
