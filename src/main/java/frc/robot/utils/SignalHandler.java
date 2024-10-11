@@ -16,8 +16,8 @@ public class SignalHandler {
    * Retrieves a signal's value either from replay data (if available) or writes a real-time value.
    *
    * @param signalPath The path of the signal
-   * @param realTimeValue The real-time value to write if not in replay mode
-   * @return SignalData if replay is active, otherwise StatusCode of the write operation
+   * @param realTimeValue The real-time value to write
+   * @return SignalData - Use to log real-time data when in sim or real robot
    */
   @SuppressWarnings("unchecked")
   public static <T> SignalData<T> readValue(String signalPath, T realTimeValue) {
@@ -56,7 +56,7 @@ public class SignalHandler {
    *
    * @param signalPath The path of the signal
    * @param realTimeValue The real-time value to write if not in replay mode
-   * @return SignalData if replay is active, otherwise StatusCode of the write operation
+   * @return SignalData - Use when replay is active
    */
   public static <T> SignalData<T> writeValue(String signalPath, T realTimeValue) {
     // Write the real-time value if not in replay mode
