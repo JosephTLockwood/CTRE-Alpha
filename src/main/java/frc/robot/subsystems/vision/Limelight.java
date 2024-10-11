@@ -134,9 +134,9 @@ public class Limelight implements Runnable {
   }
 
   private PoseEstimate readPoseEstimate(String signalPath) {
-    Boolean validPoseEstimate =
-        readPoseEstimateFromSignal(SignalHandler.<Boolean>readValue(signalPath + "/Valid", Boolean.FALSE));
-    if (Boolean.FALSE.equals(validPoseEstimate)) {
+    SignalHandler<Boolean> validPoseEstimate =
+        SignalHandler.<Boolean>readValue(signalPath + "/Valid", Boolean.FALSE);
+    if (validPoseEstimate.status != StatusCode.OK && Boolean.FALSE.equals(validPoseEstimate)) {
       return new PoseEstimate();
     }
     PoseEstimate poseEstimate =
