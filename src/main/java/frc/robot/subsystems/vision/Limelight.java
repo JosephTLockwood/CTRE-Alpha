@@ -91,8 +91,8 @@ public class Limelight implements Runnable {
     PoseEstimate mt1;
     PoseEstimate mt2;
     if (Constants.getMode() == Constants.Mode.REPLAY) {
-      mt1 = getPoseEstimate("Odometry/MT1/" + limelightName);
-      mt2 = getPoseEstimate("Odometry/MT2/" + limelightName);
+      mt1 = readPoseEstimate("Odometry/MT1/" + limelightName);
+      mt2 = readPoseEstimate("Odometry/MT2/" + limelightName);
     } else {
       LimelightHelpers.SetRobotOrientation(
           limelightName, swerveStateSupplier.get().Pose.getRotation().getDegrees(), 0, 0, 0, 0, 0);
@@ -132,16 +132,16 @@ public class Limelight implements Runnable {
     return TunerConstants.visionStandardDeviationTheta * Math.pow(mt.avgTagDist, 2.0) / mt.tagCount;
   }
 
-  private PoseEstimate getPoseEstimate(String signalPath) {
+  private PoseEstimate readPoseEstimate(String signalPath) {
     PoseEstimate poseEstimate =
-        getPoseEstimateFromSignal(SignalHandler.readValue(signalPath, new double[] {}));
+        readPoseEstimateFromSignal(SignalHandler.readValue(signalPath, new double[] {}));
     RawFiducial[] rawFiducials =
         getFiducialsFromSignal(SignalHandler.readValue(signalPath + "/Tags/", new long[] {}));
     poseEstimate.rawFiducials = rawFiducials;
     return poseEstimate;
   }
 
-  private PoseEstimate getPoseEstimateFromSignal(SignalData<double[]> signalData) {
+  private PoseEstimate readPoseEstimateFromSignal(SignalData<double[]> signalData) {
     if (signalData.status != StatusCode.OK) {
       return new PoseEstimate();
     }
