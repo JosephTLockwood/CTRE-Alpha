@@ -31,8 +31,8 @@ import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
-import frc.robot.Constants;
-import frc.robot.Constants.Mode;
+import frc.robot.RobotMode;
+import frc.robot.RobotMode.Mode;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.vision.Limelight;
 import frc.robot.subsystems.vision.PhotonVision;
@@ -221,7 +221,7 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
   }
 
   public void configureVision() {
-    if (Constants.getMode() == Mode.SIM) {
+    if (RobotMode.getMode() == Mode.SIM) {
       photonThread.setName("Photon Thread");
       photonThread.setDaemon(true);
       photonThread.start();

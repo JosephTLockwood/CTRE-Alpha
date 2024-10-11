@@ -12,7 +12,7 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
-import frc.robot.Constants;
+import frc.robot.RobotMode;
 import frc.robot.LimelightHelpers;
 import frc.robot.LimelightHelpers.PoseEstimate;
 import frc.robot.LimelightHelpers.RawFiducial;
@@ -90,7 +90,7 @@ public class Limelight implements Runnable {
   private PoseEstimate getVisionUpdate(String limelightName) {
     PoseEstimate mt1;
     PoseEstimate mt2;
-    if (Constants.getMode() == Constants.Mode.REPLAY) {
+    if (RobotMode.getMode() == Constants.Mode.REPLAY) {
       mt1 = readPoseEstimate("Odometry/MT1/" + limelightName);
       mt2 = readPoseEstimate("Odometry/MT2/" + limelightName);
     } else {
