@@ -8,9 +8,7 @@ import com.ctre.phoenix6.Utils;
 
 public class SignalHandler {
 
-  private SignalHandler() {
-    throw new IllegalStateException("Utility class");
-  }
+  private SignalHandler() {}
 
   /**
    * Retrieves a signal's value either from replay data (if available) or writes a real-time value.
