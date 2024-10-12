@@ -15,7 +15,6 @@ public final class VisionHelper {
   private VisionHelper() {}
 
   public static void writePoseEstimate(String signalPath, PoseEstimate poseEstimate) {
-    LimelightHelpers.printPoseEstimate(poseEstimate);
     if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(poseEstimate))) {
       SignalHandler.writeValue(
           signalPath,

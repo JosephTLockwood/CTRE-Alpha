@@ -4,7 +4,6 @@ import com.ctre.phoenix6.HootReplay;
 import com.ctre.phoenix6.HootReplay.SignalData;
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.StatusCode;
-import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Pair;
@@ -14,7 +13,6 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
-import edu.wpi.first.wpilibj.Timer;
 import frc.robot.LimelightHelpers;
 import frc.robot.LimelightHelpers.PoseEstimate;
 import frc.robot.LimelightHelpers.RawFiducial;
@@ -71,17 +69,14 @@ public class Limelight implements Runnable {
   private void updateVisionMeasurements() {
     for (String limelightName : limelights) {
       PoseEstimate mt = getVisionUpdate(limelightName);
+      VisionHelper.writePoseEstimate("Odometry/" + limelightName, mt);
       if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
         continue;
       }
       double xyStdDev = calculateXYStdDev(mt);
       double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
-      SignalHandler.writeValue(
-          "Odometry/" + limelightName,
-          new double[] {mt.pose.getX(), mt.pose.getY(), mt.pose.getRotation().getDegrees()});
       poseEstimates.add(new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev)));
     }
-    double timeDiff = Utils.getCurrentTimeSeconds() - Timer.getFPGATimestamp();
     // Sort poseEstimates and send to consumer
     poseEstimates.stream()
         .sorted(Comparator.comparingDouble(pair -> pair.getFirst().timestampSeconds))
@@ -89,7 +84,7 @@ public class Limelight implements Runnable {
             pair ->
                 poseConsumer.addVisionMeasurement(
                     pair.getFirst().pose,
-                    pair.getFirst().timestampSeconds - pair.getFirst().latency + timeDiff,
+                    pair.getFirst().timestampSeconds - pair.getFirst().latency,
                     pair.getSecond()));
   }
 

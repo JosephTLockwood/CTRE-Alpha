@@ -1,7 +1,6 @@
 package frc.robot.subsystems.vision;
 
 import com.ctre.phoenix6.SignalLogger;
-import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Pair;
@@ -16,7 +15,6 @@ import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.RobotBase;
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import frc.robot.LimelightHelpers;
 import frc.robot.LimelightHelpers.PoseEstimate;
@@ -119,15 +117,13 @@ public class PhotonVision implements Runnable {
     double xyStdDev = calculateXYStdDev(mt);
     double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
     poseEstimates.add(new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev)));
-    double timeDiff = Utils.getCurrentTimeSeconds() - Timer.getFPGATimestamp();
-    // Sort poseEstimates and send to consumer
     poseEstimates.stream()
         .sorted(Comparator.comparingDouble(pair -> pair.getFirst().timestampSeconds))
         .forEach(
             pair ->
                 poseConsumer.addVisionMeasurement(
                     pair.getFirst().pose,
-                    pair.getFirst().timestampSeconds - pair.getFirst().latency + timeDiff,
+                    pair.getFirst().timestampSeconds - pair.getFirst().latency,
                     pair.getSecond()));
   }
 
