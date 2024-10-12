@@ -19,7 +19,6 @@ import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import frc.robot.LimelightHelpers;
 import frc.robot.LimelightHelpers.PoseEstimate;
 import frc.robot.LimelightHelpers.RawFiducial;
-import frc.robot.generated.TunerConstants;
 import frc.robot.utils.FieldConstants;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -112,7 +111,7 @@ public class PhotonVision implements Runnable {
   /** Update the vision measurements. */
   private void updateVisionMeasurements() {
     PoseEstimate mt = getVisionUpdate(cameraName);
-    Pair<PoseEstimate, Vector<N3>> visionMeasurement =
+    Pair<PoseEstimate, Matrix<N3, N1>> visionMeasurement =
         VisionHelper.getVisionMeasurement(cameraName, mt);
     if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(visionMeasurement.getFirst()))) {
       return;
@@ -206,28 +205,6 @@ public class PhotonVision implements Runnable {
   private Field2d getSimDebugField() {
     if (!RobotBase.isSimulation()) return null;
     return visionSim.getDebugField();
-  }
-
-  /**
-   * Calculate the standard deviation of the x and y coordinates.
-   *
-   * @param avgTagDist The pose estimate
-   * @param tagPosesSize The number of detected tag poses
-   * @return The standard deviation of the x and y coordinates
-   */
-  private double calculateXYStdDev(PoseEstimate mt) {
-    return TunerConstants.visionStandardDeviationXY * Math.pow(mt.avgTagDist, 2.0) / mt.tagCount;
-  }
-
-  /**
-   * Calculate the standard deviation of the theta coordinate.
-   *
-   * @param avgTagDist The pose estimate
-   * @param tagPosesSize The number of detected tag poses
-   * @return The standard deviation of the theta coordinate
-   */
-  private double calculateThetaStdDev(PoseEstimate mt) {
-    return TunerConstants.visionStandardDeviationTheta * Math.pow(mt.avgTagDist, 2.0) / mt.tagCount;
   }
 
   @FunctionalInterface
