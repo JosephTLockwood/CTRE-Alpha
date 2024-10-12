@@ -4,10 +4,10 @@ import com.ctre.phoenix6.HootReplay;
 import com.ctre.phoenix6.HootReplay.SignalData;
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.StatusCode;
+import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Pair;
-import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -18,11 +18,8 @@ import frc.robot.LimelightHelpers.PoseEstimate;
 import frc.robot.LimelightHelpers.RawFiducial;
 import frc.robot.RobotMode;
 import frc.robot.RobotMode.Mode;
-import frc.robot.generated.TunerConstants;
 import frc.robot.utils.SignalHandler;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.function.Supplier;
 
 /**
@@ -42,8 +39,6 @@ public class Limelight implements Runnable {
   private final VisionMeasurement poseConsumer;
   private final Supplier<SwerveDriveState> swerveStateSupplier;
 
-  private ArrayList<Pair<PoseEstimate, Vector<N3>>> poseEstimates = new ArrayList<>();
-
   public Limelight(
       String[] limelights,
       VisionMeasurement poseConsumer,
@@ -60,32 +55,24 @@ public class Limelight implements Runnable {
       HootReplay.waitForPlaying(10);
     }
     while (!Thread.interrupted()) {
-      poseEstimates.clear();
       updateVisionMeasurements();
     }
   }
 
   /** Update the vision measurements. */
   private void updateVisionMeasurements() {
-    for (String limelightName : limelights) {
-      PoseEstimate mt = getVisionUpdate(limelightName);
-      VisionHelper.writePoseEstimate("Odometry/" + limelightName, mt);
-      if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
+    for (String cameraName : limelights) {
+      PoseEstimate mt = getVisionUpdate(cameraName);
+      Pair<PoseEstimate, Vector<N3>> visionMeasurement =
+          VisionHelper.getVisionMeasurement(cameraName, mt);
+      if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(visionMeasurement.getFirst()))) {
         continue;
       }
-      double xyStdDev = calculateXYStdDev(mt);
-      double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
-      poseEstimates.add(new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev)));
+      poseConsumer.addVisionMeasurement(
+          visionMeasurement.getFirst().pose,
+          visionMeasurement.getFirst().timestampSeconds,
+          visionMeasurement.getSecond());
     }
-    // Sort poseEstimates and send to consumer
-    poseEstimates.stream()
-        .sorted(Comparator.comparingDouble(pair -> pair.getFirst().timestampSeconds))
-        .forEach(
-            pair ->
-                poseConsumer.addVisionMeasurement(
-                    pair.getFirst().pose,
-                    pair.getFirst().timestampSeconds - pair.getFirst().latency,
-                    pair.getSecond()));
   }
 
   private PoseEstimate getVisionUpdate(String limelightName) {
@@ -104,28 +91,6 @@ public class Limelight implements Runnable {
     }
 
     return VisionHelper.filterPoseEstimate(mt1, mt2, swerveStateSupplier);
-  }
-
-  /**
-   * Calculate the standard deviation of the x and y coordinates.
-   *
-   * @param avgTagDist The pose estimate
-   * @param tagPosesSize The number of detected tag poses
-   * @return The standard deviation of the x and y coordinates
-   */
-  private double calculateXYStdDev(PoseEstimate mt) {
-    return TunerConstants.visionStandardDeviationXY * Math.pow(mt.avgTagDist, 2.0) / mt.tagCount;
-  }
-
-  /**
-   * Calculate the standard deviation of the theta coordinate.
-   *
-   * @param avgTagDist The pose estimate
-   * @param tagPosesSize The number of detected tag poses
-   * @return The standard deviation of the theta coordinate
-   */
-  private double calculateThetaStdDev(PoseEstimate mt) {
-    return TunerConstants.visionStandardDeviationTheta * Math.pow(mt.avgTagDist, 2.0) / mt.tagCount;
   }
 
   private PoseEstimate readPoseEstimate(String signalPath) {

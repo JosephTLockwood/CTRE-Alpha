@@ -1,10 +1,10 @@
 package frc.robot.subsystems.vision;
 
 import com.ctre.phoenix6.SignalLogger;
+import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Pair;
-import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
@@ -23,7 +23,6 @@ import frc.robot.generated.TunerConstants;
 import frc.robot.utils.FieldConstants;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.photonvision.EstimatedRobotPose;
@@ -110,21 +109,15 @@ public class PhotonVision implements Runnable {
   /** Update the vision measurements. */
   private void updateVisionMeasurements() {
     PoseEstimate mt = getVisionUpdate(cameraName);
-    VisionHelper.writePoseEstimate("Odometry/" + cameraName, mt);
-    if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
+    Pair<PoseEstimate, Vector<N3>> visionMeasurement =
+        VisionHelper.getVisionMeasurement(cameraName, mt);
+    if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(visionMeasurement.getFirst()))) {
       return;
     }
-    double xyStdDev = calculateXYStdDev(mt);
-    double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
-    poseEstimates.add(new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev)));
-    poseEstimates.stream()
-        .sorted(Comparator.comparingDouble(pair -> pair.getFirst().timestampSeconds))
-        .forEach(
-            pair ->
-                poseConsumer.addVisionMeasurement(
-                    pair.getFirst().pose,
-                    pair.getFirst().timestampSeconds - pair.getFirst().latency,
-                    pair.getSecond()));
+    poseConsumer.addVisionMeasurement(
+        visionMeasurement.getFirst().pose,
+        visionMeasurement.getFirst().timestampSeconds,
+        visionMeasurement.getSecond());
   }
 
   private PoseEstimate getVisionUpdate(String cameraName) {
