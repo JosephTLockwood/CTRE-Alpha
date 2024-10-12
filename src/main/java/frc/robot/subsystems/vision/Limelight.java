@@ -1,27 +1,24 @@
 package frc.robot.subsystems.vision;
 
+import com.ctre.phoenix6.HootReplay;
 import com.ctre.phoenix6.HootReplay.SignalData;
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.StatusCode;
+import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Pair;
-import edu.wpi.first.math.VecBuilder;
-import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
-import frc.robot.RobotMode;
-import frc.robot.RobotMode.Mode;
 import frc.robot.LimelightHelpers;
 import frc.robot.LimelightHelpers.PoseEstimate;
 import frc.robot.LimelightHelpers.RawFiducial;
-import frc.robot.generated.TunerConstants;
+import frc.robot.RobotMode;
+import frc.robot.RobotMode.Mode;
 import frc.robot.utils.SignalHandler;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.function.Supplier;
 
 /**
@@ -41,8 +38,6 @@ public class Limelight implements Runnable {
   private final VisionMeasurement poseConsumer;
   private final Supplier<SwerveDriveState> swerveStateSupplier;
 
-  private ArrayList<Pair<PoseEstimate, Vector<N3>>> poseEstimates = new ArrayList<>();
-
   public Limelight(
       String[] limelights,
       VisionMeasurement poseConsumer,
@@ -55,37 +50,28 @@ public class Limelight implements Runnable {
 
   @Override
   public void run() {
+    if (RobotMode.getMode() == Mode.REPLAY) {
+      HootReplay.waitForPlaying(10);
+    }
     while (!Thread.interrupted()) {
-      poseEstimates.clear();
       updateVisionMeasurements();
     }
   }
 
   /** Update the vision measurements. */
   private void updateVisionMeasurements() {
-    for (String limelightName : limelights) {
-      PoseEstimate mt = getVisionUpdate(limelightName);
-      if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
+    for (String cameraName : limelights) {
+      PoseEstimate mt = getVisionUpdate(cameraName);
+      Pair<PoseEstimate, Matrix<N3, N1>> visionMeasurement =
+          VisionHelper.getVisionMeasurement(cameraName, mt);
+      if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(visionMeasurement.getFirst()))) {
         continue;
       }
-      double xyStdDev = calculateXYStdDev(mt);
-      double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
-      SignalHandler.writeValue(
-          "Odometry/" + limelightName,
-          new double[] {mt.pose.getX(), mt.pose.getY(), mt.pose.getRotation().getDegrees()});
-      poseEstimates.add(new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev)));
+      poseConsumer.addVisionMeasurement(
+          visionMeasurement.getFirst().pose,
+          Utils.getCurrentTimeSeconds() - visionMeasurement.getFirst().latency,
+          visionMeasurement.getSecond());
     }
-    // Sort poseEstimates and send to consumer
-    poseEstimates.stream()
-        .sorted(
-            Comparator.comparingDouble(
-                pair -> pair.getFirst().timestampSeconds - pair.getFirst().latency))
-        .forEach(
-            pair ->
-                poseConsumer.addVisionMeasurement(
-                    pair.getFirst().pose,
-                    pair.getFirst().timestampSeconds - pair.getFirst().latency,
-                    pair.getSecond()));
   }
 
   private PoseEstimate getVisionUpdate(String limelightName) {
@@ -103,37 +89,16 @@ public class Limelight implements Runnable {
       VisionHelper.writePoseEstimate("Odometry/MT2/" + limelightName, mt2);
     }
 
-    PoseEstimate mt = VisionHelper.filterPoseEstimate(mt1, mt2, swerveStateSupplier);
-    if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
-      return new PoseEstimate();
-    }
-
-    return mt;
-  }
-
-  /**
-   * Calculate the standard deviation of the x and y coordinates.
-   *
-   * @param avgTagDist The pose estimate
-   * @param tagPosesSize The number of detected tag poses
-   * @return The standard deviation of the x and y coordinates
-   */
-  private double calculateXYStdDev(PoseEstimate mt) {
-    return TunerConstants.visionStandardDeviationXY * Math.pow(mt.avgTagDist, 2.0) / mt.tagCount;
-  }
-
-  /**
-   * Calculate the standard deviation of the theta coordinate.
-   *
-   * @param avgTagDist The pose estimate
-   * @param tagPosesSize The number of detected tag poses
-   * @return The standard deviation of the theta coordinate
-   */
-  private double calculateThetaStdDev(PoseEstimate mt) {
-    return TunerConstants.visionStandardDeviationTheta * Math.pow(mt.avgTagDist, 2.0) / mt.tagCount;
+    return VisionHelper.filterPoseEstimate(mt1, mt2, swerveStateSupplier);
   }
 
   private PoseEstimate readPoseEstimate(String signalPath) {
+    SignalData<Boolean> validPoseEstimate =
+        SignalHandler.readValue(signalPath + "/Valid/", Boolean.FALSE);
+    if (validPoseEstimate.status != StatusCode.OK
+        || Boolean.FALSE.equals(validPoseEstimate.value)) {
+      return new PoseEstimate();
+    }
     PoseEstimate poseEstimate =
         readPoseEstimateFromSignal(SignalHandler.readValue(signalPath, new double[] {}));
     RawFiducial[] rawFiducials =
@@ -143,7 +108,7 @@ public class Limelight implements Runnable {
   }
 
   private PoseEstimate readPoseEstimateFromSignal(SignalData<double[]> signalData) {
-    if (signalData.status != StatusCode.OK) {
+    if (signalData.status != StatusCode.OK || signalData.value.length != 8) {
       return new PoseEstimate();
     }
     double[] data = signalData.value;
