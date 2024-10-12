@@ -4,6 +4,7 @@ import com.ctre.phoenix6.HootReplay;
 import com.ctre.phoenix6.HootReplay.SignalData;
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.StatusCode;
+import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Pair;
@@ -69,7 +70,7 @@ public class Limelight implements Runnable {
       }
       poseConsumer.addVisionMeasurement(
           visionMeasurement.getFirst().pose,
-          visionMeasurement.getFirst().timestampSeconds,
+          Utils.getCurrentTimeSeconds() - visionMeasurement.getFirst().latency,
           visionMeasurement.getSecond());
     }
   }

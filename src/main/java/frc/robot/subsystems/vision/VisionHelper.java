@@ -1,7 +1,6 @@
 package frc.robot.subsystems.vision;
 
 import com.ctre.phoenix6.SignalLogger;
-import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.VecBuilder;
@@ -28,7 +27,6 @@ public final class VisionHelper {
             poseEstimate.pose.getX(),
             poseEstimate.pose.getY(),
             poseEstimate.pose.getRotation().getDegrees(),
-            Utils.getCurrentTimeSeconds(),
             poseEstimate.latency,
             poseEstimate.tagCount,
             poseEstimate.avgTagDist,

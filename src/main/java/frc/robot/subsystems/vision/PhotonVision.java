@@ -1,6 +1,7 @@
 package frc.robot.subsystems.vision;
 
 import com.ctre.phoenix6.SignalLogger;
+import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Pair;
@@ -81,10 +82,13 @@ public class PhotonVision implements Runnable {
     // camera.
     var cameraProp = new SimCameraProperties();
     cameraProp.setCalibration(960, 720, Rotation2d.fromDegrees(90));
-    cameraProp.setCalibError(0.35, 0.10);
-    cameraProp.setFPS(15);
-    cameraProp.setAvgLatencyMs(50);
-    cameraProp.setLatencyStdDevMs(15);
+    // Approximate detection noise with average and standard deviation error in pixels.
+    cameraProp.setCalibError(0.25, 0.08);
+    // Set the camera image capture framerate (Note: this is limited by robot loop rate).
+    cameraProp.setFPS(20);
+    // The average and standard deviation in milliseconds of image data latency.
+    cameraProp.setAvgLatencyMs(35);
+    cameraProp.setLatencyStdDevMs(5);
     // Create a PhotonCameraSim which will update the linked PhotonCamera's values
     // with visible
     // targets.
@@ -115,7 +119,7 @@ public class PhotonVision implements Runnable {
     }
     poseConsumer.addVisionMeasurement(
         visionMeasurement.getFirst().pose,
-        visionMeasurement.getFirst().timestampSeconds,
+        Utils.getCurrentTimeSeconds() - visionMeasurement.getFirst().latency,
         visionMeasurement.getSecond());
   }
 
@@ -123,7 +127,6 @@ public class PhotonVision implements Runnable {
     visionSim.update(swerveStateSupplier.get().Pose);
     visionSim.getDebugField();
     PhotonPipelineResult results = cameraSim.getCamera().getLatestResult();
-    double timestamp = results.getTimestampSeconds();
     Optional<Alliance> allianceOptional = DriverStation.getAlliance();
     if (results.targets.isEmpty() || allianceOptional.isEmpty()) {
       return new PoseEstimate();
@@ -153,10 +156,10 @@ public class PhotonVision implements Runnable {
 
       PoseEstimate mt1 =
           createPoseEstimate(
-              poseEstimation.toPose2d(), timestamp, latencyMS, tagIDs, averageTagDistance, false);
+              poseEstimation.toPose2d(), latencyMS, tagIDs, averageTagDistance, false);
       PoseEstimate mt2 =
           createPoseEstimate(
-              poseEstimation.toPose2d(), timestamp, latencyMS, tagIDs, averageTagDistance, true);
+              poseEstimation.toPose2d(), latencyMS, tagIDs, averageTagDistance, true);
 
       VisionHelper.writePoseEstimate("Odometry/MT1/" + cameraName, mt1);
       VisionHelper.writePoseEstimate("Odometry/MT2/" + cameraName, mt2);
@@ -167,19 +170,14 @@ public class PhotonVision implements Runnable {
   }
 
   private PoseEstimate createPoseEstimate(
-      Pose2d pose,
-      double timestampSeconds,
-      double latencyMS,
-      long[] tagIds,
-      double avgTagDist,
-      boolean isMegaTag2) {
+      Pose2d pose, double latencyMS, long[] tagIds, double avgTagDist, boolean isMegaTag2) {
     RawFiducial[] rawFiducials =
         Arrays.stream(tagIds)
             .mapToObj(id -> new RawFiducial((int) id, 0, 0, 0, 0, 0, 0))
             .toArray(RawFiducial[]::new);
     return new PoseEstimate(
         pose,
-        timestampSeconds,
+        Utils.getCurrentTimeSeconds(),
         latencyMS,
         tagIds.length,
         0.0,

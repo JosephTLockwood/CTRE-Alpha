@@ -82,7 +82,7 @@ public class TunerConstants {
 
   //   private static final CANBus kCANBus = new CANBus("canivore");
   private static final CANBus kCANBus =
-      new CANBus("canivore", "./logs/sim_2024-10-11_23-44-16.hoot");
+      new CANBus("canivore", "./logs/sim_2024-10-12_00-54-39.hoot");
 
   private static final int kPigeonId = 13;
 
