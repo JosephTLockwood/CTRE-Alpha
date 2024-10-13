@@ -8,6 +8,7 @@ import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Pair;
+import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.numbers.N1;
@@ -62,14 +63,17 @@ public class Limelight implements Runnable {
   private void updateVisionMeasurements() {
     for (String cameraName : limelights) {
       PoseEstimate mt = getVisionUpdate(cameraName);
-      Pair<PoseEstimate, Matrix<N3, N1>> visionMeasurement =
+      Pair<PoseEstimate, Vector<N3>> visionMeasurement =
           VisionHelper.getVisionMeasurement(cameraName, mt);
       if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(visionMeasurement.getFirst()))) {
         continue;
       }
       poseConsumer.addVisionMeasurement(
           visionMeasurement.getFirst().pose,
-          Utils.getCurrentTimeSeconds() - visionMeasurement.getFirst().latency,
+          Utils.getCurrentTimeSeconds()
+              - VisionHelper.getTimeDiffrence(
+                  cameraName, visionMeasurement.getFirst().timestampSeconds)
+              - visionMeasurement.getFirst().latency,
           visionMeasurement.getSecond());
     }
   }

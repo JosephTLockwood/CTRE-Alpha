@@ -111,14 +111,18 @@ public class PhotonVision implements Runnable {
   /** Update the vision measurements. */
   private void updateVisionMeasurements() {
     PoseEstimate mt = getVisionUpdate(cameraName);
-    Pair<PoseEstimate, Matrix<N3, N1>> visionMeasurement =
+    Pair<PoseEstimate, Vector<N3>> visionMeasurement =
         VisionHelper.getVisionMeasurement(cameraName, mt);
     if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(visionMeasurement.getFirst()))) {
       return;
     }
+
     poseConsumer.addVisionMeasurement(
         visionMeasurement.getFirst().pose,
-        Utils.getCurrentTimeSeconds() - visionMeasurement.getFirst().latency,
+        Utils.getCurrentTimeSeconds()
+            - VisionHelper.getTimeDiffrence(
+                cameraName, visionMeasurement.getFirst().timestampSeconds)
+            - visionMeasurement.getFirst().latency,
         visionMeasurement.getSecond());
   }
 
@@ -130,7 +134,9 @@ public class PhotonVision implements Runnable {
     if (results.targets.isEmpty() || allianceOptional.isEmpty()) {
       return new PoseEstimate();
     }
+    double timestamp = results.getTimestampSeconds();
     double latencyMS = results.getLatencyMillis();
+
     Optional<EstimatedRobotPose> estimatedPose = getEstimatedGlobalPose();
     if (estimatedPose.isPresent()) {
       Pose3d poseEstimation = estimatedPose.get().estimatedPose;
@@ -155,10 +161,10 @@ public class PhotonVision implements Runnable {
 
       PoseEstimate mt1 =
           createPoseEstimate(
-              poseEstimation.toPose2d(), latencyMS, tagIDs, averageTagDistance, false);
+              poseEstimation.toPose2d(), timestamp, latencyMS, tagIDs, averageTagDistance, false);
       PoseEstimate mt2 =
           createPoseEstimate(
-              poseEstimation.toPose2d(), latencyMS, tagIDs, averageTagDistance, true);
+              poseEstimation.toPose2d(), timestamp, latencyMS, tagIDs, averageTagDistance, true);
 
       VisionHelper.writePoseEstimate("Odometry/MT1/" + cameraName, mt1);
       VisionHelper.writePoseEstimate("Odometry/MT2/" + cameraName, mt2);
@@ -169,15 +175,20 @@ public class PhotonVision implements Runnable {
   }
 
   private PoseEstimate createPoseEstimate(
-      Pose2d pose, double latencyMS, long[] tagIds, double avgTagDist, boolean isMegaTag2) {
+      Pose2d pose,
+      double timestamp,
+      double latencyMS,
+      long[] tagIds,
+      double avgTagDist,
+      boolean isMegaTag2) {
     RawFiducial[] rawFiducials =
         Arrays.stream(tagIds)
             .mapToObj(id -> new RawFiducial((int) id, 0, 0, 0, 0, 0, 0))
             .toArray(RawFiducial[]::new);
     return new PoseEstimate(
         pose,
-        Utils.getCurrentTimeSeconds(),
-        latencyMS,
+        timestamp,
+        latencyMS / 1e3,
         tagIds.length,
         0.0,
         avgTagDist,

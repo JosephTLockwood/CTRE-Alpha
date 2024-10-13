@@ -2,15 +2,16 @@ package frc.robot.subsystems.vision;
 
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
-import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.VecBuilder;
-import edu.wpi.first.math.numbers.N1;
+import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.networktables.NetworkTablesJNI;
 import edu.wpi.first.wpilibj.DriverStation;
 import frc.robot.LimelightHelpers;
 import frc.robot.LimelightHelpers.PoseEstimate;
+import frc.robot.RobotMode;
 import frc.robot.generated.TunerConstants;
 import frc.robot.utils.SignalHandler;
 import java.util.Arrays;
@@ -28,6 +29,7 @@ public final class VisionHelper {
             poseEstimate.pose.getX(),
             poseEstimate.pose.getY(),
             poseEstimate.pose.getRotation().getDegrees(),
+            poseEstimate.timestampSeconds,
             poseEstimate.latency,
             poseEstimate.tagCount,
             poseEstimate.avgTagDist,
@@ -53,7 +55,7 @@ public final class VisionHelper {
     return mt;
   }
 
-  public static Pair<PoseEstimate, Matrix<N3, N1>> getVisionMeasurement(
+  public static Pair<PoseEstimate, Vector<N3>> getVisionMeasurement(
       String cameraName, PoseEstimate mt) {
     writePoseEstimate("Odometry/" + cameraName, mt);
     if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
@@ -62,6 +64,20 @@ public final class VisionHelper {
     double xyStdDev = calculateXYStdDev(mt);
     double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
     return new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev));
+  }
+
+  public static long getTimeDiffrence(String cameraName, double timestampSeconds) {
+    String timeDifPath = "Odometry/" + cameraName + "/Time Diffrence/";
+    if (RobotMode.getMode() == RobotMode.Mode.REPLAY) {
+      return SignalHandler.readValue(timeDifPath, 0L).value;
+    }
+    return writeTimeDiffrence(timeDifPath, timestampSeconds);
+  }
+
+  private static long writeTimeDiffrence(String timeDifPath, double timestampSeconds) {
+    long timeDiffrence = (long) (NetworkTablesJNI.now() * 1e-6 - timestampSeconds);
+    SignalHandler.writeValue(timeDifPath, timeDiffrence);
+    return timeDiffrence;
   }
 
   /**
