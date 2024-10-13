@@ -35,9 +35,12 @@ import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.LimelightHelpers;
 import frc.robot.LimelightHelpers.PoseEstimate;
+import frc.robot.RobotMode;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.vision.Limelight;
-import frc.robot.subsystems.vision.PhotonVision;
+import frc.robot.subsystems.vision.PhotonVisionSIM;
+import frc.robot.subsystems.vision.VisionProvider;
+import frc.robot.subsystems.vision.VisionReplay;
 import java.util.Arrays;
 import java.util.function.Supplier;
 
@@ -75,14 +78,16 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
   private final SwerveRequest.SysIdSwerveSteerGains SteerCharacterization =
       new SwerveRequest.SysIdSwerveSteerGains();
 
-  private final PhotonVision photonVision =
-      new PhotonVision(
+  private final VisionProvider photonVision =
+      new PhotonVisionSIM(
           "limelight-fl",
           new Transform3d(
               new Translation3d(0.1, 0, 0.5), new Rotation3d(0, Math.toRadians(-15), 0)),
           this::getState);
 
-  private final Limelight limelightVision = new Limelight("limelight-fl", this::getState);
+  private final VisionProvider limelightVision = new Limelight("limelight-fl", this::getState);
+
+  private final VisionProvider replayVision = new VisionReplay("limelight-fl", this::getState);
 
   /* Use one of these sysidroutines for your particular test */
   private SysIdRoutine SysIdRoutineTranslation =
@@ -131,6 +136,7 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
       SwerveDrivetrainConstants drivetrainConstants, SwerveModuleConstants... modules) {
     super(drivetrainConstants, modules);
     configurePathPlanner();
+    startVisionThread();
     if (Utils.isSimulation()) {
       startSimThread();
     }
@@ -153,6 +159,7 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
       SwerveModuleConstants... modules) {
     super(drivetrainConstants, OdometryUpdateFrequency, modules);
     configurePathPlanner();
+    startVisionThread();
     if (Utils.isSimulation()) {
       startSimThread();
     }
@@ -184,6 +191,7 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
         visionStandardDeviation,
         modules);
     configurePathPlanner();
+    startVisionThread();
     if (Utils.isSimulation()) {
       startSimThread();
     }
@@ -317,16 +325,28 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
               /* use the measured time delta, get battery voltage from WPILib */
               updateSimState(deltaTime, RobotController.getBatteryVoltage());
             });
+    m_simNotifier.startPeriodic(kSimLoopPeriod);
+  }
 
+  private void startVisionThread() {
+    VisionProvider visionProvider;
+    switch (RobotMode.getMode()) {
+      case SIM:
+        visionProvider = photonVision;
+        break;
+      case REAL:
+        visionProvider = limelightVision;
+        break;
+      default:
+        visionProvider = replayVision;
+        break;
+    }
     m_visionNotifier =
         new Notifier(
             () -> {
               final double currentTime = Utils.getCurrentTimeSeconds();
               Pair<PoseEstimate, Vector<N3>> visionMeasurement =
-                  photonVision.updateVisionMeasurements();
-              // RobotMode.getMode() == Mode.SIM
-              //     ? photonVision.updateVisionMeasurements()
-              //     : limelightVision.updateVisionMeasurements();
+                  visionProvider.updateVisionMeasurements();
               if (Boolean.TRUE.equals(
                   LimelightHelpers.validPoseEstimate(visionMeasurement.getFirst()))) {
                 addVisionMeasurement(
@@ -335,7 +355,6 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
                     visionMeasurement.getSecond());
               }
             });
-    m_simNotifier.startPeriodic(kSimLoopPeriod);
     m_visionNotifier.startPeriodic(kSimLoopPeriod);
   }
 }

@@ -1,13 +1,10 @@
 package frc.robot.subsystems.vision;
 
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
-import edu.wpi.first.math.Pair;
-import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform3d;
-import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.RobotBase;
@@ -31,27 +28,25 @@ import org.photonvision.targeting.PhotonPipelineResult;
  * Class that extends the Phoenix 6 SwerveDrivetrain class and implements Subsystem so it can easily
  * be used in command-based projects.
  */
-public class PhotonVision {
+public class PhotonVisionSIM extends VisionProvider {
   /**
    * Constructs a Limelight interface with the given limelight names.
    *
    * @param cameraName Drivetrain-wide constants for the swerve drive
    */
-  private final Supplier<SwerveDriveState> swerveStateSupplier;
-
-  private final String cameraName;
   private final PhotonCamera camera;
+
   private final PhotonPoseEstimator photonEstimator;
   private VisionSystemSim visionSim;
   private PhotonCameraSim cameraSim;
 
   private double lastEstTimestamp = 0;
 
-  public PhotonVision(
+  public PhotonVisionSIM(
       String cameraName,
       Transform3d robotToCamera,
       Supplier<SwerveDriveState> swerveStateSupplier) {
-    this.cameraName = cameraName;
+    super(cameraName, swerveStateSupplier);
     camera = new PhotonCamera(cameraName);
     photonEstimator =
         new PhotonPoseEstimator(
@@ -84,16 +79,10 @@ public class PhotonVision {
     // Add the simulated camera to view the targets on this simulated field.
     visionSim.addCamera(cameraSim, robotToCamera);
     cameraSim.enableDrawWireframe(true);
-    this.swerveStateSupplier = swerveStateSupplier;
   }
 
-  /** Update the vision measurements. */
-  public Pair<PoseEstimate, Vector<N3>> updateVisionMeasurements() {
-    PoseEstimate mt = getVisionUpdate(cameraName);
-    return VisionHelper.getVisionMeasurement(cameraName, mt);
-  }
-
-  private PoseEstimate getVisionUpdate(String cameraName) {
+  @Override
+  protected PoseEstimate getVisionUpdate() {
     visionSim.update(swerveStateSupplier.get().Pose);
     visionSim.getDebugField();
     PhotonPipelineResult results = cameraSim.getCamera().getLatestResult();
@@ -133,10 +122,10 @@ public class PhotonVision {
           createPoseEstimate(
               poseEstimation.toPose2d(), timestamp, latencyMS, tagIDs, averageTagDistance, true);
 
-      VisionHelper.writePoseEstimate("Odometry/MT1/" + cameraName, mt1);
-      VisionHelper.writePoseEstimate("Odometry/MT2/" + cameraName, mt2);
+      writePoseEstimate("Odometry/MT1/" + cameraName, mt1);
+      writePoseEstimate("Odometry/MT2/" + cameraName, mt2);
 
-      return VisionHelper.filterPoseEstimate(mt1, mt2, swerveStateSupplier);
+      return filterPoseEstimate(mt1, mt2, swerveStateSupplier);
     }
     return new PoseEstimate();
   }

@@ -17,11 +17,35 @@ import frc.robot.utils.SignalHandler;
 import java.util.Arrays;
 import java.util.function.Supplier;
 
-public final class VisionHelper {
+public abstract class VisionProvider {
+  protected String cameraName;
+  protected Supplier<SwerveDriveState> swerveStateSupplier;
 
-  private VisionHelper() {}
+  protected VisionProvider(String cameraName, Supplier<SwerveDriveState> swerveStateSupplier) {
+    this.cameraName = cameraName;
+    this.swerveStateSupplier = swerveStateSupplier;
+  }
 
-  public static void writePoseEstimate(String signalPath, PoseEstimate poseEstimate) {
+  public Pair<PoseEstimate, Vector<N3>> updateVisionMeasurements() {
+    PoseEstimate mt = getVisionUpdate();
+    return getVisionMeasurement(cameraName, mt);
+  }
+
+  protected PoseEstimate getVisionUpdate() {
+    return new PoseEstimate();
+  }
+
+  private Pair<PoseEstimate, Vector<N3>> getVisionMeasurement(String cameraName, PoseEstimate mt) {
+    writePoseEstimate("Odometry/" + cameraName, mt);
+    if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
+      return new Pair<>(mt, VecBuilder.fill(0.0, 0.0, 0.0));
+    }
+    double xyStdDev = calculateXYStdDev(mt);
+    double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
+    return new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev));
+  }
+
+  protected static void writePoseEstimate(String signalPath, PoseEstimate poseEstimate) {
     if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(poseEstimate))) {
       SignalHandler.writeValue(
           signalPath,
@@ -43,7 +67,7 @@ public final class VisionHelper {
     SignalLogger.writeBoolean(signalPath + "/Valid/", false);
   }
 
-  public static PoseEstimate filterPoseEstimate(
+  protected static PoseEstimate filterPoseEstimate(
       PoseEstimate mt1, PoseEstimate mt2, Supplier<SwerveDriveState> swerveStateSupplier) {
     PoseEstimate mt = DriverStation.isEnabled() ? mt1 : mt2;
     // If our angular velocity is greater than 80 degrees per second
@@ -53,17 +77,6 @@ public final class VisionHelper {
       return new PoseEstimate();
     }
     return mt;
-  }
-
-  public static Pair<PoseEstimate, Vector<N3>> getVisionMeasurement(
-      String cameraName, PoseEstimate mt) {
-    writePoseEstimate("Odometry/" + cameraName, mt);
-    if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
-      return new Pair<>(mt, VecBuilder.fill(0.0, 0.0, 0.0));
-    }
-    double xyStdDev = calculateXYStdDev(mt);
-    double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
-    return new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev));
   }
 
   public static double getTimeDiffrence(String cameraName, double timestampSeconds) {
