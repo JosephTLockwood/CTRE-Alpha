@@ -35,8 +35,6 @@ import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.LimelightHelpers;
 import frc.robot.LimelightHelpers.PoseEstimate;
-import frc.robot.RobotMode;
-import frc.robot.RobotMode.Mode;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.vision.Limelight;
 import frc.robot.subsystems.vision.PhotonVision;
@@ -324,12 +322,11 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
         new Notifier(
             () -> {
               final double currentTime = Utils.getCurrentTimeSeconds();
-              photonVision.updateVisionMeasurements();
-              limelightVision.updateVisionMeasurements();
               Pair<PoseEstimate, Vector<N3>> visionMeasurement =
-                  RobotMode.getMode() == Mode.SIM
-                      ? photonVision.updateVisionMeasurements()
-                      : limelightVision.updateVisionMeasurements();
+                  photonVision.updateVisionMeasurements();
+              // RobotMode.getMode() == Mode.SIM
+              //     ? photonVision.updateVisionMeasurements()
+              //     : limelightVision.updateVisionMeasurements();
               if (Boolean.TRUE.equals(
                   LimelightHelpers.validPoseEstimate(visionMeasurement.getFirst()))) {
                 addVisionMeasurement(
