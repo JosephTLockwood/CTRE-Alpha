@@ -66,16 +66,16 @@ public final class VisionHelper {
     return new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev));
   }
 
-  public static long getTimeDiffrence(String cameraName, double timestampSeconds) {
+  public static double getTimeDiffrence(String cameraName, double timestampSeconds) {
     String timeDifPath = "Odometry/" + cameraName + "/Time Diffrence/";
     if (RobotMode.getMode() == RobotMode.Mode.REPLAY) {
-      return SignalHandler.readValue(timeDifPath, 0L).value;
+      return SignalHandler.readValue(timeDifPath, 0.0).value;
     }
     return writeTimeDiffrence(timeDifPath, timestampSeconds);
   }
 
-  private static long writeTimeDiffrence(String timeDifPath, double timestampSeconds) {
-    long timeDiffrence = (long) (NetworkTablesJNI.now() * 1e-6 - timestampSeconds);
+  private static double writeTimeDiffrence(String timeDifPath, double timestampSeconds) {
+    double timeDiffrence = NetworkTablesJNI.now() * 1.0e-6 - timestampSeconds;
     SignalHandler.writeValue(timeDifPath, timeDiffrence);
     return timeDiffrence;
   }
