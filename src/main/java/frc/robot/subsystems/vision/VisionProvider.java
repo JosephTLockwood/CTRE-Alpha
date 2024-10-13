@@ -114,4 +114,8 @@ public abstract class VisionProvider {
   private static double calculateThetaStdDev(PoseEstimate mt) {
     return TunerConstants.visionStandardDeviationTheta * Math.pow(mt.avgTagDist, 2.0) / mt.tagCount;
   }
+
+  public String getCameraName() {
+    return this.cameraName;
+  }
 }
