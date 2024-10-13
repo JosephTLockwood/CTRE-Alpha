@@ -1,26 +1,20 @@
 package frc.robot.subsystems.vision;
 
-import com.ctre.phoenix6.SignalLogger;
-import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
-import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform3d;
-import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
-import frc.robot.LimelightHelpers;
 import frc.robot.LimelightHelpers.PoseEstimate;
 import frc.robot.LimelightHelpers.RawFiducial;
 import frc.robot.utils.FieldConstants;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -37,14 +31,12 @@ import org.photonvision.targeting.PhotonPipelineResult;
  * Class that extends the Phoenix 6 SwerveDrivetrain class and implements Subsystem so it can easily
  * be used in command-based projects.
  */
-public class PhotonVision implements Runnable {
+public class PhotonVision {
   /**
    * Constructs a Limelight interface with the given limelight names.
    *
    * @param cameraName Drivetrain-wide constants for the swerve drive
    */
-  private final VisionMeasurement poseConsumer;
-
   private final Supplier<SwerveDriveState> swerveStateSupplier;
 
   private final String cameraName;
@@ -55,12 +47,9 @@ public class PhotonVision implements Runnable {
 
   private double lastEstTimestamp = 0;
 
-  private ArrayList<Pair<PoseEstimate, Vector<N3>>> poseEstimates = new ArrayList<>();
-
   public PhotonVision(
       String cameraName,
       Transform3d robotToCamera,
-      VisionMeasurement poseConsumer,
       Supplier<SwerveDriveState> swerveStateSupplier) {
     this.cameraName = cameraName;
     camera = new PhotonCamera(cameraName);
@@ -95,35 +84,13 @@ public class PhotonVision implements Runnable {
     // Add the simulated camera to view the targets on this simulated field.
     visionSim.addCamera(cameraSim, robotToCamera);
     cameraSim.enableDrawWireframe(true);
-    this.poseConsumer = poseConsumer;
     this.swerveStateSupplier = swerveStateSupplier;
-    SignalLogger.start();
-  }
-
-  @Override
-  public void run() {
-    while (!Thread.interrupted()) {
-      poseEstimates.clear();
-      updateVisionMeasurements();
-    }
   }
 
   /** Update the vision measurements. */
-  private void updateVisionMeasurements() {
+  public Pair<PoseEstimate, Vector<N3>> updateVisionMeasurements() {
     PoseEstimate mt = getVisionUpdate(cameraName);
-    Pair<PoseEstimate, Vector<N3>> visionMeasurement =
-        VisionHelper.getVisionMeasurement(cameraName, mt);
-    if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(visionMeasurement.getFirst()))) {
-      return;
-    }
-
-    poseConsumer.addVisionMeasurement(
-        visionMeasurement.getFirst().pose,
-        Utils.getCurrentTimeSeconds()
-            - VisionHelper.getTimeDiffrence(
-                cameraName, visionMeasurement.getFirst().timestampSeconds)
-            - visionMeasurement.getFirst().latency,
-        visionMeasurement.getSecond());
+    return VisionHelper.getVisionMeasurement(cameraName, mt);
   }
 
   private PoseEstimate getVisionUpdate(String cameraName) {
@@ -216,13 +183,5 @@ public class PhotonVision implements Runnable {
   private Field2d getSimDebugField() {
     if (!RobotBase.isSimulation()) return null;
     return visionSim.getDebugField();
-  }
-
-  @FunctionalInterface
-  public interface VisionMeasurement {
-    void addVisionMeasurement(
-        Pose2d visionRobotPoseMeters,
-        double timestampSeconds,
-        Matrix<N3, N1> visionMeasurementStdDevs);
   }
 }

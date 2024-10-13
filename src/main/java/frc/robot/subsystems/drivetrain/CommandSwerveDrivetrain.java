@@ -16,6 +16,8 @@ import com.pathplanner.lib.util.DriveFeedforward;
 import com.pathplanner.lib.util.swerve.SwerveSetpoint;
 import com.pathplanner.lib.util.swerve.SwerveSetpointGenerator;
 import edu.wpi.first.math.Matrix;
+import edu.wpi.first.math.Pair;
+import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
@@ -31,6 +33,8 @@ import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.robot.LimelightHelpers;
+import frc.robot.LimelightHelpers.PoseEstimate;
 import frc.robot.RobotMode;
 import frc.robot.RobotMode.Mode;
 import frc.robot.generated.TunerConstants;
@@ -44,20 +48,10 @@ import java.util.function.Supplier;
  * be used in command-based projects.
  */
 public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsystem {
-  private final Thread limelightThread =
-      new Thread(
-          new Limelight(new String[] {"limelight-fl"}, this::addVisionMeasurement, this::getState));
-  private final Thread photonThread =
-      new Thread(
-          new PhotonVision(
-              "limelight-fl",
-              new Transform3d(
-                  new Translation3d(0.1, 0, 0.5), new Rotation3d(0, Math.toRadians(-15), 0)),
-              this::addVisionMeasurement,
-              this::getState));
 
   private static final double kSimLoopPeriod = 0.005; // 5 ms
   private Notifier m_simNotifier = null;
+  private Notifier m_visionNotifier = null;
   private double m_lastSimTime;
 
   /* Blue alliance sees forward as 0 degrees (toward red alliance wall) */
@@ -82,6 +76,15 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
       new SwerveRequest.SysIdSwerveRotation();
   private final SwerveRequest.SysIdSwerveSteerGains SteerCharacterization =
       new SwerveRequest.SysIdSwerveSteerGains();
+
+  private final PhotonVision photonVision =
+      new PhotonVision(
+          "limelight-fl",
+          new Transform3d(
+              new Translation3d(0.1, 0, 0.5), new Rotation3d(0, Math.toRadians(-15), 0)),
+          this::getState);
+
+  private final Limelight limelightVision = new Limelight("limelight-fl", this::getState);
 
   /* Use one of these sysidroutines for your particular test */
   private SysIdRoutine SysIdRoutineTranslation =
@@ -130,7 +133,6 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
       SwerveDrivetrainConstants drivetrainConstants, SwerveModuleConstants... modules) {
     super(drivetrainConstants, modules);
     configurePathPlanner();
-    configureVision();
     if (Utils.isSimulation()) {
       startSimThread();
     }
@@ -153,7 +155,6 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
       SwerveModuleConstants... modules) {
     super(drivetrainConstants, OdometryUpdateFrequency, modules);
     configurePathPlanner();
-    configureVision();
     if (Utils.isSimulation()) {
       startSimThread();
     }
@@ -185,7 +186,6 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
         visionStandardDeviation,
         modules);
     configurePathPlanner();
-    configureVision();
     if (Utils.isSimulation()) {
       startSimThread();
     }
@@ -218,18 +218,6 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
             [TunerConstants.robotConfig.numModules]; // Method to get the current feedforwards
     Arrays.fill(currentFeedforwards, new DriveFeedforward(0, 0, 0));
     previousSetpoint = new SwerveSetpoint(currentSpeeds, currentStates, currentFeedforwards);
-  }
-
-  public void configureVision() {
-    if (RobotMode.getMode() == Mode.SIM) {
-      photonThread.setName("Photon Thread");
-      photonThread.setDaemon(true);
-      photonThread.start();
-    } else {
-      limelightThread.setName("Limelight Thread");
-      limelightThread.setDaemon(true);
-      limelightThread.start();
-    }
   }
 
   public Command getAutoPath(String pathName) {
@@ -328,10 +316,29 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
               final double currentTime = Utils.getCurrentTimeSeconds();
               double deltaTime = currentTime - m_lastSimTime;
               m_lastSimTime = currentTime;
-
               /* use the measured time delta, get battery voltage from WPILib */
               updateSimState(deltaTime, RobotController.getBatteryVoltage());
             });
+
+    m_visionNotifier =
+        new Notifier(
+            () -> {
+              final double currentTime = Utils.getCurrentTimeSeconds();
+              photonVision.updateVisionMeasurements();
+              limelightVision.updateVisionMeasurements();
+              Pair<PoseEstimate, Vector<N3>> visionMeasurement =
+                  RobotMode.getMode() == Mode.SIM
+                      ? photonVision.updateVisionMeasurements()
+                      : limelightVision.updateVisionMeasurements();
+              if (Boolean.TRUE.equals(
+                  LimelightHelpers.validPoseEstimate(visionMeasurement.getFirst()))) {
+                addVisionMeasurement(
+                    visionMeasurement.getFirst().pose,
+                    currentTime - visionMeasurement.getFirst().latency,
+                    visionMeasurement.getSecond());
+              }
+            });
     m_simNotifier.startPeriodic(kSimLoopPeriod);
+    m_visionNotifier.startPeriodic(kSimLoopPeriod);
   }
 }

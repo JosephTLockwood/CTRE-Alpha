@@ -1,10 +1,7 @@
 package frc.robot.subsystems.vision;
 
-import com.ctre.phoenix6.HootReplay;
 import com.ctre.phoenix6.HootReplay.SignalData;
-import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.StatusCode;
-import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Pair;
@@ -22,77 +19,36 @@ import frc.robot.utils.SignalHandler;
 import java.util.Arrays;
 import java.util.function.Supplier;
 
-/**
- * Class that extends the Phoenix 6 SwerveDrivetrain class and implements Subsystem so it can easily
- * be used in command-based projects.
- */
-public class Limelight implements Runnable {
-  /**
-   * Constructs a Limelight interface with the given limelight names.
-   *
-   * @param limelights Drivetrain-wide constants for the swerve drive
-   * @param poseConsumer The consumer of the vision measurements
-   * @param swerveStateSupplier The supplier of the swerve drive state
-   */
-  private final String[] limelights;
+public class Limelight {
 
-  private final VisionMeasurement poseConsumer;
+  private final String cameraName;
   private final Supplier<SwerveDriveState> swerveStateSupplier;
 
-  public Limelight(
-      String[] limelights,
-      VisionMeasurement poseConsumer,
-      Supplier<SwerveDriveState> swerveStateSupplier) {
-    this.limelights = limelights;
-    this.poseConsumer = poseConsumer;
+  public Limelight(String cameraName, Supplier<SwerveDriveState> swerveStateSupplier) {
+    this.cameraName = cameraName;
     this.swerveStateSupplier = swerveStateSupplier;
-    SignalLogger.start();
-  }
-
-  @Override
-  public void run() {
-    if (RobotMode.getMode() == Mode.REPLAY) {
-      HootReplay.waitForPlaying(10);
-    }
-    while (!Thread.interrupted()) {
-      updateVisionMeasurements();
-    }
   }
 
   /** Update the vision measurements. */
-  private void updateVisionMeasurements() {
-    for (String cameraName : limelights) {
-      PoseEstimate mt = getVisionUpdate(cameraName);
-      Pair<PoseEstimate, Vector<N3>> visionMeasurement =
-          VisionHelper.getVisionMeasurement(cameraName, mt);
-      if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(visionMeasurement.getFirst()))) {
-        continue;
-      }
-      poseConsumer.addVisionMeasurement(
-          visionMeasurement.getFirst().pose,
-          Utils.getCurrentTimeSeconds()
-              - VisionHelper.getTimeDiffrence(
-                  cameraName, visionMeasurement.getFirst().timestampSeconds)
-              - visionMeasurement.getFirst().latency,
-          visionMeasurement.getSecond());
-    }
+  public Pair<PoseEstimate, Vector<N3>> updateVisionMeasurements() {
+    PoseEstimate mt = getVisionUpdate();
+    return VisionHelper.getVisionMeasurement(cameraName, mt);
   }
 
-  private PoseEstimate getVisionUpdate(String limelightName) {
+  private PoseEstimate getVisionUpdate() {
     PoseEstimate mt1;
     PoseEstimate mt2;
     if (RobotMode.getMode() == Mode.REPLAY) {
-      mt1 = readPoseEstimate("Odometry/MT1/" + limelightName);
-      mt2 = readPoseEstimate("Odometry/MT2/" + limelightName);
+      mt1 = readPoseEstimate("Odometry/MT1/" + cameraName);
+      mt2 = readPoseEstimate("Odometry/MT2/" + cameraName);
     } else {
       LimelightHelpers.SetRobotOrientation(
-          limelightName, swerveStateSupplier.get().Pose.getRotation().getDegrees(), 0, 0, 0, 0, 0);
-      mt1 = LimelightHelpers.getBotPoseEstimate_wpiBlue(limelightName);
-      mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
-      VisionHelper.writePoseEstimate("Odometry/MT1/" + limelightName, mt1);
-      VisionHelper.writePoseEstimate("Odometry/MT2/" + limelightName, mt2);
+          cameraName, swerveStateSupplier.get().Pose.getRotation().getDegrees(), 0, 0, 0, 0, 0);
+      mt1 = LimelightHelpers.getBotPoseEstimate_wpiBlue(cameraName);
+      mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(cameraName);
+      VisionHelper.writePoseEstimate("Odometry/MT1/" + cameraName, mt1);
+      VisionHelper.writePoseEstimate("Odometry/MT2/" + cameraName, mt2);
     }
-
     return VisionHelper.filterPoseEstimate(mt1, mt2, swerveStateSupplier);
   }
 
