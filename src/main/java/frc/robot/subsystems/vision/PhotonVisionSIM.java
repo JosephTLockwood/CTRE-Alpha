@@ -25,14 +25,14 @@ import org.photonvision.simulation.VisionSystemSim;
 import org.photonvision.targeting.PhotonPipelineResult;
 
 /**
- * Class that extends the Phoenix 6 SwerveDrivetrain class and implements Subsystem so it can easily
- * be used in command-based projects.
+ * Represents a simulated version of the PhotonVision system. This class extends the VisionProvider
+ * class and provides methods for interacting with the simulated vision system.
  */
 public class PhotonVisionSIM extends VisionProvider {
   /**
-   * Constructs a Limelight interface with the given limelight names.
+   * Constructs a PhotonVision interface with the given camera names.
    *
-   * @param cameraName Drivetrain-wide constants for the swerve drive
+   * @param cameraName Name of Camera
    */
   private final PhotonCamera camera;
 
@@ -81,6 +81,11 @@ public class PhotonVisionSIM extends VisionProvider {
     cameraSim.enableDrawWireframe(true);
   }
 
+  /**
+   * Retrieves the vision update from the PhotonVision system.
+   *
+   * @return the pose estimate representing the vision update
+   */
   @Override
   protected PoseEstimate getVisionUpdate() {
     visionSim.update(swerveStateSupplier.get().Pose);
@@ -130,6 +135,7 @@ public class PhotonVisionSIM extends VisionProvider {
     return new PoseEstimate();
   }
 
+  /** Creates a PoseEstimate object from the given parameters. */
   private PoseEstimate createPoseEstimate(
       Pose2d pose,
       double timestamp,
