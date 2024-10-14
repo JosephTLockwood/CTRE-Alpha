@@ -87,13 +87,13 @@ public class PhotonVisionSIM extends VisionProvider {
    * @return the pose estimate representing the vision update
    */
   @Override
-  protected PoseEstimate getVisionUpdate() {
+  protected PoseEstimate[] getVisionUpdate() {
     visionSim.update(swerveStateSupplier.get().Pose);
     visionSim.getDebugField();
     PhotonPipelineResult results = cameraSim.getCamera().getLatestResult();
     Optional<Alliance> allianceOptional = DriverStation.getAlliance();
     if (results.targets.isEmpty() || allianceOptional.isEmpty()) {
-      return new PoseEstimate();
+      return new PoseEstimate[] {new PoseEstimate(), new PoseEstimate()};
     }
     double timestamp = results.getTimestampSeconds();
     double latencyMS = results.getLatencyMillis();
@@ -127,12 +127,9 @@ public class PhotonVisionSIM extends VisionProvider {
           createPoseEstimate(
               poseEstimation.toPose2d(), timestamp, latencyMS, tagIDs, averageTagDistance, true);
 
-      writePoseEstimate("Odometry/MT1/" + cameraName, mt1);
-      writePoseEstimate("Odometry/MT2/" + cameraName, mt2);
-
-      return filterPoseEstimate(mt1, mt2, swerveStateSupplier);
+      return new PoseEstimate[] {mt1, mt2};
     }
-    return new PoseEstimate();
+    return new PoseEstimate[] {new PoseEstimate(), new PoseEstimate()};
   }
 
   /** Creates a PoseEstimate object from the given parameters. */

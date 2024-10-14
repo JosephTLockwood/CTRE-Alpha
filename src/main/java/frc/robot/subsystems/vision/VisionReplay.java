@@ -29,9 +29,10 @@ public class VisionReplay extends VisionProvider {
    * @return the pose estimate representing the vision update
    */
   @Override
-  protected PoseEstimate getVisionUpdate() {
-    PoseEstimate mt = readPoseEstimate("Odometry/" + cameraName);
-    return filterPoseEstimate(mt, mt, swerveStateSupplier);
+  protected PoseEstimate[] getVisionUpdate() {
+    PoseEstimate mt1 = readPoseEstimate("Odometry/MT1/" + cameraName);
+    PoseEstimate mt2 = readPoseEstimate("Odometry/MT2/" + cameraName);
+    return new PoseEstimate[] {mt1, mt2};
   }
 
   /**
@@ -47,12 +48,8 @@ public class VisionReplay extends VisionProvider {
         || Boolean.FALSE.equals(validPoseEstimate.value)) {
       return new PoseEstimate();
     }
-    PoseEstimate poseEstimate =
-        readPoseEstimateFromSignal(SignalHandler.readValue(signalPath, new double[] {}));
-    RawFiducial[] rawFiducials =
-        getFiducialsFromSignal(SignalHandler.readValue(signalPath + "/Tags/", new long[] {}));
-    poseEstimate.rawFiducials = rawFiducials;
-    return poseEstimate;
+    RawFiducial[] rawFiducials = getFiducialsFromSignal(signalPath);
+    return readPoseEstimateFromSignal(signalPath, rawFiducials);
   }
 
   /**
@@ -61,7 +58,8 @@ public class VisionReplay extends VisionProvider {
    * @param signalData the signal data
    * @return the pose estimate
    */
-  private PoseEstimate readPoseEstimateFromSignal(SignalData<double[]> signalData) {
+  private PoseEstimate readPoseEstimateFromSignal(String signalPath, RawFiducial[] rawFiducials) {
+    SignalData<double[]> signalData = SignalHandler.readValue(signalPath, new double[] {});
     if (signalData.status != StatusCode.OK || signalData.value.length != 8) {
       return new PoseEstimate();
     }
@@ -76,7 +74,7 @@ public class VisionReplay extends VisionProvider {
         0.0,
         data[6],
         0.0,
-        new RawFiducial[] {},
+        rawFiducials,
         data[7] == 1);
   }
 
@@ -86,7 +84,8 @@ public class VisionReplay extends VisionProvider {
    * @param signalData the signal data
    * @return the fiducials
    */
-  private RawFiducial[] getFiducialsFromSignal(SignalData<long[]> signalData) {
+  private RawFiducial[] getFiducialsFromSignal(String signalPath) {
+    SignalData<long[]> signalData = SignalHandler.readValue(signalPath + "/Tags/", new long[] {});
     if (signalData.status != StatusCode.OK) {
       return new RawFiducial[] {};
     }

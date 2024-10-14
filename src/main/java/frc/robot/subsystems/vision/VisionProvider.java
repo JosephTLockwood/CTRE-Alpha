@@ -39,8 +39,14 @@ public abstract class VisionProvider {
    * @return the vision measurements
    */
   public Pair<PoseEstimate, Vector<N3>> updateVisionMeasurements() {
-    PoseEstimate mt = getVisionUpdate();
-    return getVisionMeasurement(cameraName, mt);
+    PoseEstimate[] mtArray = getVisionUpdate();
+    PoseEstimate mt1 = mtArray[0];
+    PoseEstimate mt2 = mtArray[1];
+    writePoseEstimate("Odometry/MT1/" + cameraName, mt1);
+    writePoseEstimate("Odometry/MT2/" + cameraName, mt2);
+    PoseEstimate mt = filterPoseEstimate(mt1, mt2, swerveStateSupplier);
+    writePoseEstimate("Odometry/" + cameraName, mt);
+    return getVisionMeasurement(mt);
   }
 
   /**
@@ -49,25 +55,28 @@ public abstract class VisionProvider {
    * @return the pose estimate representing the vision update Note: This method is abstract and must
    *     be implemented by a subclass.
    */
-  protected PoseEstimate getVisionUpdate() {
-    return new PoseEstimate();
+  protected PoseEstimate[] getVisionUpdate() {
+    return new PoseEstimate[] {new PoseEstimate(), new PoseEstimate()};
   }
 
   /**
-   * Retrieves the vision measurement.
+   * Filters the pose estimate.
    *
-   * @param cameraName the name of the camera
-   * @param mt the pose estimate
-   * @return the vision measurement
+   * @param mt1 The first pose estimate
+   * @param mt2 The second pose estimate
+   * @param swerveStateSupplier The supplier for the swerve drive state
+   * @return The filtered pose estimate
    */
-  private Pair<PoseEstimate, Vector<N3>> getVisionMeasurement(String cameraName, PoseEstimate mt) {
-    writePoseEstimate("Odometry/" + cameraName, mt);
-    if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
-      return new Pair<>(mt, VecBuilder.fill(0.0, 0.0, 0.0));
+  protected static PoseEstimate filterPoseEstimate(
+      PoseEstimate mt1, PoseEstimate mt2, Supplier<SwerveDriveState> swerveStateSupplier) {
+    PoseEstimate mt = DriverStation.isEnabled() ? mt1 : mt2;
+    // If our angular velocity is greater than 80 degrees per second
+    if (Math.abs(swerveStateSupplier.get().Speeds.omegaRadiansPerSecond)
+            > Units.degreesToRadians(80)
+        || Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
+      return new PoseEstimate();
     }
-    double xyStdDev = calculateXYStdDev(mt);
-    double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
-    return new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev));
+    return mt;
   }
 
   protected static void writePoseEstimate(String signalPath, PoseEstimate poseEstimate) {
@@ -93,23 +102,19 @@ public abstract class VisionProvider {
   }
 
   /**
-   * Filters the pose estimate.
+   * Retrieves the vision measurement.
    *
-   * @param mt1 The first pose estimate
-   * @param mt2 The second pose estimate
-   * @param swerveStateSupplier The supplier for the swerve drive state
-   * @return The filtered pose estimate
+   * @param cameraName the name of the camera
+   * @param mt the pose estimate
+   * @return the vision measurement
    */
-  protected static PoseEstimate filterPoseEstimate(
-      PoseEstimate mt1, PoseEstimate mt2, Supplier<SwerveDriveState> swerveStateSupplier) {
-    PoseEstimate mt = DriverStation.isEnabled() ? mt1 : mt2;
-    // If our angular velocity is greater than 80 degrees per second
-    if (Math.abs(swerveStateSupplier.get().Speeds.omegaRadiansPerSecond)
-            > Units.degreesToRadians(80)
-        || Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
-      return new PoseEstimate();
+  private Pair<PoseEstimate, Vector<N3>> getVisionMeasurement(PoseEstimate mt) {
+    if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
+      return new Pair<>(mt, VecBuilder.fill(0.0, 0.0, 0.0));
     }
-    return mt;
+    double xyStdDev = calculateXYStdDev(mt);
+    double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
+    return new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev));
   }
 
   /**

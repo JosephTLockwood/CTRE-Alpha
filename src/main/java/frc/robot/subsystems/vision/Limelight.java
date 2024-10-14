@@ -24,13 +24,11 @@ public class Limelight extends VisionProvider {
    * @return the pose estimate representing the vision update
    */
   @Override
-  protected PoseEstimate getVisionUpdate() {
+  protected PoseEstimate[] getVisionUpdate() {
     LimelightHelpers.SetRobotOrientation(
         cameraName, swerveStateSupplier.get().Pose.getRotation().getDegrees(), 0, 0, 0, 0, 0);
     PoseEstimate mt1 = LimelightHelpers.getBotPoseEstimate_wpiBlue(cameraName);
     PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(cameraName);
-    writePoseEstimate("Odometry/MT1/" + cameraName, mt1);
-    writePoseEstimate("Odometry/MT2/" + cameraName, mt2);
-    return filterPoseEstimate(mt1, mt2, swerveStateSupplier);
+    return new PoseEstimate[] {mt1, mt2};
   }
 }
