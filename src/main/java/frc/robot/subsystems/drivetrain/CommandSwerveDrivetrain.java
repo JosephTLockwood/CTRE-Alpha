@@ -341,7 +341,7 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
         visionProvider = replayVision;
         break;
     }
-    // String cameraName = visionProvider.getCameraName();
+    String cameraName = visionProvider.getCameraName();
     m_visionNotifier =
         new Notifier(
             () -> {
@@ -353,9 +353,11 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
                   LimelightHelpers.validPoseEstimate(visionMeasurement.getFirst()))) {
                 addVisionMeasurement(
                     visionMeasurement.getFirst().pose,
-                    // VisionProvider.getTimeDiffrence(cameraName,
-                    // visionMeasurement.getFirst().timestampSeconds) maybe needed
-                    currentTime - visionMeasurement.getFirst().latency,
+                    currentTime
+                        - VisionProvider.getTimeDiffrence(
+                            cameraName, visionMeasurement.getFirst().timestampSeconds)
+                        - visionMeasurement.getFirst().latency,
+                    // currentTime - visionMeasurement.getFirst().latency,
                     visionMeasurement.getSecond());
               }
             });

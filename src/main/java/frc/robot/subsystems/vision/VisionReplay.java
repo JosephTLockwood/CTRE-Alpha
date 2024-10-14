@@ -64,8 +64,6 @@ public class VisionReplay extends VisionProvider {
       return new PoseEstimate();
     }
     double[] data = signalData.value;
-    // We may want this to act like a new vision reading using NetworkTablesJNI.now() maybe viable
-    // (didn't seem to work)
     return new PoseEstimate(
         new Pose2d(data[0], data[1], Rotation2d.fromDegrees(data[2])),
         data[3],
