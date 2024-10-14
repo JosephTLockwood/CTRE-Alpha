@@ -4,16 +4,16 @@
  */
 package frc.robot.utils.statemachine;
 
+import com.ctre.phoenix6.SignalLogger;
 import edu.wpi.first.util.sendable.Sendable;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj2.command.*;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.utils.statemachine.graph.DirectionalEnumGraph;
 import frc.robot.utils.statemachine.transitions.CommandTransition;
 import frc.robot.utils.statemachine.transitions.TransitionBase;
 import java.util.*;
-import org.littletonrobotics.junction.Logger;
-import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 public abstract class StateMachine<E extends Enum<E>> extends SubsystemBase {
   private final DirectionalEnumGraph<E, TransitionBase<E>> transitionGraph;
@@ -31,7 +31,7 @@ public abstract class StateMachine<E extends Enum<E>> extends SubsystemBase {
   private final Class<E> enumType;
   private final List<StateMachine<?>> subsystems;
 
-  private final LoggedDashboardChooser<E> stateChooser;
+  private final SendableChooser<E> stateChooser;
   private E lastChooserRequest;
 
   /**
@@ -51,7 +51,7 @@ public abstract class StateMachine<E extends Enum<E>> extends SubsystemBase {
     currentFlags = new HashSet<>();
     stateCommands = new HashMap<>();
     subsystems = new ArrayList<>();
-    stateChooser = new LoggedDashboardChooser<>(name + "State Chooser");
+    stateChooser = new SendableChooser<>();
     lastChooserRequest = undeterminedState;
 
     initStateChooser();
@@ -63,7 +63,7 @@ public abstract class StateMachine<E extends Enum<E>> extends SubsystemBase {
   }
 
   private void initStateChooser() {
-    stateChooser.addDefaultOption(undeterminedState.name(), undeterminedState);
+    stateChooser.setDefaultOption(undeterminedState.name(), undeterminedState);
 
     for (E state : enumType.getEnumConstants()) {
       if (state != undeterminedState) {
@@ -495,7 +495,7 @@ public abstract class StateMachine<E extends Enum<E>> extends SubsystemBase {
 
   @Override
   public final void periodic() {
-    E chooserRequest = stateChooser.get();
+    E chooserRequest = stateChooser.getSelected();
 
     if (enabled) {
       updateTransitioning();
@@ -512,17 +512,16 @@ public abstract class StateMachine<E extends Enum<E>> extends SubsystemBase {
   }
 
   private void recordLogs() {
-    Logger.recordOutput(
+    SignalLogger.writeString(
         getName() + "/desired",
         isTransitioning() ? getCurrentTransition().getEndState().name() : getState().name());
+    SignalLogger.writeString(getName() + "/state", getState().toString());
 
-    Logger.recordOutput(getName() + "/state", getState().toString());
+    SignalLogger.writeBoolean(getName() + "/transitioning", isTransitioning());
+    SignalLogger.writeString(getName() + "/flags", Arrays.toString(getCurrentFlagsAsArray()));
+    SignalLogger.writeString(getName(), Arrays.toString(getCurrentFlagsAsArray()));
 
-    Logger.recordOutput(getName() + "/transitioning", isTransitioning());
-    Logger.recordOutput(getName() + "/flags", getCurrentFlagsAsArray());
-    Logger.recordOutput(getName(), getCurrentFlagsAsArray());
-
-    Logger.recordOutput(getName() + "/enabled", enabled);
+    SignalLogger.writeBoolean(getName() + "/enabled", enabled);
 
     logAdditionalOutputs();
   }

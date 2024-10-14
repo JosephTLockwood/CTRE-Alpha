@@ -2,6 +2,7 @@ package frc.robot.generated;
 
 import static edu.wpi.first.units.Units.*;
 
+import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.Pigeon2Configuration;
@@ -79,7 +80,10 @@ public class TunerConstants {
   private static final boolean kInvertLeftSide = false;
   private static final boolean kInvertRightSide = true;
 
-  private static final String kCANBus = "canivore";
+  //   private static final CANBus kCANBus = new CANBus("canivore");
+  private static final CANBus kCANBus =
+      new CANBus("canivore", "./logs/sim_2024-10-14_17-38-06.hoot");
+
   private static final int kPigeonId = 13;
 
   // These are only used for simulation
@@ -120,7 +124,7 @@ public class TunerConstants {
 
   private static final SwerveDrivetrainConstants DrivetrainConstants =
       new SwerveDrivetrainConstants()
-          .withCANBusName(kCANBus)
+          .withCANBusName(kCANBus.getName())
           .withPigeon2Id(kPigeonId)
           .withPigeon2Configs(pigeonConfigs);
 
