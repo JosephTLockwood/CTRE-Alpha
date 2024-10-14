@@ -30,9 +30,8 @@ public class VisionReplay extends VisionProvider {
    */
   @Override
   protected PoseEstimate getVisionUpdate() {
-    PoseEstimate mt1 = readPoseEstimate("Odometry/MT1/" + cameraName);
-    PoseEstimate mt2 = readPoseEstimate("Odometry/MT2/" + cameraName);
-    return filterPoseEstimate(mt1, mt2, swerveStateSupplier);
+    PoseEstimate mt = readPoseEstimate("Odometry/" + cameraName);
+    return filterPoseEstimate(mt, mt, swerveStateSupplier);
   }
 
   /**
