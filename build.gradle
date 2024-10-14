@@ -73,7 +73,7 @@ dependencies {
     nativeRelease wpi.java.vendor.jniRelease(wpi.platforms.desktop)
     simulationRelease wpi.sim.enableRelease()
 
-    implementation 'org.codehaus.groovy:groovy-all:2.4.15'
+    implementation 'org.codehaus.groovy:groovy-all:2.5.23'
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
