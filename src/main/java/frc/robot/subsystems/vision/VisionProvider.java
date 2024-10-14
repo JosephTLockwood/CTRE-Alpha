@@ -2,25 +2,50 @@ package frc.robot.subsystems.vision;
 
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
-import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.VecBuilder;
-import edu.wpi.first.math.numbers.N1;
+import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.networktables.NetworkTablesJNI;
 import edu.wpi.first.wpilibj.DriverStation;
 import frc.robot.LimelightHelpers;
 import frc.robot.LimelightHelpers.PoseEstimate;
+import frc.robot.RobotMode;
 import frc.robot.generated.TunerConstants;
 import frc.robot.utils.SignalHandler;
 import java.util.Arrays;
 import java.util.function.Supplier;
 
-public final class VisionHelper {
+public abstract class VisionProvider {
+  protected String cameraName;
+  protected Supplier<SwerveDriveState> swerveStateSupplier;
 
-  private VisionHelper() {}
+  protected VisionProvider(String cameraName, Supplier<SwerveDriveState> swerveStateSupplier) {
+    this.cameraName = cameraName;
+    this.swerveStateSupplier = swerveStateSupplier;
+  }
 
-  public static void writePoseEstimate(String signalPath, PoseEstimate poseEstimate) {
+  public Pair<PoseEstimate, Vector<N3>> updateVisionMeasurements() {
+    PoseEstimate mt = getVisionUpdate();
+    return getVisionMeasurement(cameraName, mt);
+  }
+
+  protected PoseEstimate getVisionUpdate() {
+    return new PoseEstimate();
+  }
+
+  private Pair<PoseEstimate, Vector<N3>> getVisionMeasurement(String cameraName, PoseEstimate mt) {
+    writePoseEstimate("Odometry/" + cameraName, mt);
+    if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
+      return new Pair<>(mt, VecBuilder.fill(0.0, 0.0, 0.0));
+    }
+    double xyStdDev = calculateXYStdDev(mt);
+    double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
+    return new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev));
+  }
+
+  protected static void writePoseEstimate(String signalPath, PoseEstimate poseEstimate) {
     if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(poseEstimate))) {
       SignalHandler.writeValue(
           signalPath,
@@ -28,6 +53,7 @@ public final class VisionHelper {
             poseEstimate.pose.getX(),
             poseEstimate.pose.getY(),
             poseEstimate.pose.getRotation().getDegrees(),
+            poseEstimate.timestampSeconds,
             poseEstimate.latency,
             poseEstimate.tagCount,
             poseEstimate.avgTagDist,
@@ -41,7 +67,7 @@ public final class VisionHelper {
     SignalLogger.writeBoolean(signalPath + "/Valid/", false);
   }
 
-  public static PoseEstimate filterPoseEstimate(
+  protected static PoseEstimate filterPoseEstimate(
       PoseEstimate mt1, PoseEstimate mt2, Supplier<SwerveDriveState> swerveStateSupplier) {
     PoseEstimate mt = DriverStation.isEnabled() ? mt1 : mt2;
     // If our angular velocity is greater than 80 degrees per second
@@ -53,15 +79,18 @@ public final class VisionHelper {
     return mt;
   }
 
-  public static Pair<PoseEstimate, Matrix<N3, N1>> getVisionMeasurement(
-      String cameraName, PoseEstimate mt) {
-    writePoseEstimate("Odometry/" + cameraName, mt);
-    if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
-      return new Pair<>(mt, VecBuilder.fill(0.0, 0.0, 0.0));
+  public static double getTimeDiffrence(String cameraName, double timestampSeconds) {
+    String timeDifPath = "Odometry/" + cameraName + "/Time Diffrence/";
+    if (RobotMode.getMode() == RobotMode.Mode.REPLAY) {
+      return SignalHandler.readValue(timeDifPath, 0.0).value;
     }
-    double xyStdDev = calculateXYStdDev(mt);
-    double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
-    return new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev));
+    return writeTimeDiffrence(timeDifPath, timestampSeconds);
+  }
+
+  private static double writeTimeDiffrence(String timeDifPath, double timestampSeconds) {
+    double timeDiffrence = NetworkTablesJNI.now() * 1.0e-6 - timestampSeconds;
+    SignalHandler.writeValue(timeDifPath, timeDiffrence);
+    return timeDiffrence;
   }
 
   /**
@@ -84,5 +113,9 @@ public final class VisionHelper {
    */
   private static double calculateThetaStdDev(PoseEstimate mt) {
     return TunerConstants.visionStandardDeviationTheta * Math.pow(mt.avgTagDist, 2.0) / mt.tagCount;
+  }
+
+  public String getCameraName() {
+    return this.cameraName;
   }
 }
