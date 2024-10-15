@@ -10,6 +10,7 @@ import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveModule.SteerRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
+import com.pathplanner.lib.auto.NamedCommands;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -19,11 +20,15 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.drivetrain.CommandSwerveDrivetrain;
 import frc.robot.subsystems.drivetrain.SwerveRequests;
+import frc.robot.subsystems.intake.Intake;
+import frc.robot.utils.statemachine.StateMachine;
 
-public class RobotContainer {
+public class RobotContainer extends StateMachine<RobotContainer.State> {
   /* Setting up bindings for necessary control of the swerve drive platform */
   private final CommandXboxController joystick = new CommandXboxController(0);
   public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
+
+  private final Intake intake = new Intake();
 
   private final SwerveRequests.FieldCentricSwerveSetpoint drive =
       new SwerveRequests.FieldCentricSwerveSetpoint(drivetrain::getState)
@@ -86,10 +91,52 @@ public class RobotContainer {
   }
 
   public RobotContainer() {
+    super("RobotContainer", State.UNDETERMINED, State.class);
+    registerStateCommands();
     configureBindings();
+    configureNamedCommands();
+  }
+
+  private void configureNamedCommands() {
+    NamedCommands.registerCommand(
+        "intake", intake.transitionCommand(Intake.State.INTAKE_DOWN, false));
   }
 
   public Command getAutonomousCommand() {
     return Commands.print("No autonomous command configured");
+  }
+
+  private void registerStateCommands() {
+    registerStateCommand(
+        State.SOFT_E_STOP, Commands.parallel(intake.transitionCommand(Intake.State.SOFT_E_STOP)));
+
+    registerStateCommand(
+        State.GROUND_INTAKE, Commands.parallel(intake.transitionCommand(Intake.State.INTAKE_DOWN)));
+
+    registerStateCommand(
+        State.TRAVERSING, Commands.parallel(intake.transitionCommand(Intake.State.INTAKE_UP)));
+
+    registerStateCommand(
+        State.SOURCE_INTAKE, Commands.parallel(intake.transitionCommand(Intake.State.INTAKE_UP)));
+
+    registerStateCommand(State.SHOOTING, Commands.parallel());
+
+    registerStateCommand(State.CLIMB, Commands.parallel());
+  }
+
+  @Override
+  protected void determineSelf() {
+    setState(State.SOFT_E_STOP);
+  }
+
+  public enum State {
+    UNDETERMINED,
+    SOFT_E_STOP,
+    AUTONOMOUS,
+    GROUND_INTAKE,
+    SOURCE_INTAKE,
+    TRAVERSING,
+    SHOOTING,
+    CLIMB
   }
 }
