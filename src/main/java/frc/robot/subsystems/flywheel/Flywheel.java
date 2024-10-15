@@ -13,7 +13,7 @@
 
 package frc.robot.subsystems.flywheel;
 
-import static edu.wpi.first.units.Units.RotationsPerSecond;
+import static edu.wpi.first.units.Units.*;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusCode;
@@ -33,7 +33,7 @@ import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import frc.robot.utils.statemachine.StateMachine;
-import java.util.function.DoubleSupplier;
+import java.util.function.Supplier;
 
 public class Flywheel extends StateMachine<Flywheel.State> {
 
@@ -50,13 +50,18 @@ public class Flywheel extends StateMachine<Flywheel.State> {
 
   TalonFXConfiguration config = new TalonFXConfiguration();
 
-  private static final double AMP_SHOT = 20.0;
-  private static final double AMP_TOLERANCE = 3.0;
-  private static final double TRAP_SHOT = 3.6;
+  private static final Measure<Velocity<Angle>> AMP_SHOT = RotationsPerSecond.of(20.0);
+  private static final Measure<Velocity<Angle>> TRAP_SHOT = RotationsPerSecond.of(3.6);
+  private static final Measure<Velocity<Angle>> SUBWOOFER_SHOT = RotationsPerSecond.of(3.6);
 
-  private static DoubleSupplier speaker;
+  private static final Measure<Velocity<Angle>> AMP_TOLERANCE = RotationsPerSecond.of(3.0);
+  private static final Measure<Velocity<Angle>> TRAP_TOLERANCE = RotationsPerSecond.of(3.6);
+  private static final Measure<Velocity<Angle>> SUBWOOFER_TOLERANCE = RotationsPerSecond.of(3.6);
+  private static final Measure<Velocity<Angle>> SPEAKER_TOLERANCE = RotationsPerSecond.of(3.6);
 
-  public Flywheel(DoubleSupplier speaker) {
+  private Supplier<Measure<Velocity<Angle>>> speaker;
+
+  public Flywheel(Supplier<Measure<Velocity<Angle>>> speaker) {
     super("Flywheel", State.UNDETERMINED, State.class);
     this.speaker = speaker;
     registerStateCommands();
@@ -109,8 +114,15 @@ public class Flywheel extends StateMachine<Flywheel.State> {
     registerStateCommand(
         State.SPEAKER,
         new ParallelCommandGroup(
-            new RunCommand(() -> setFlywheelTarget(speaker.getAsDouble())),
-            atSpeedCommand(speaker, 0.5)));
+            new RunCommand(() -> setFlywheelTarget(speaker.get())),
+            atSpeedCommand(speaker, SPEAKER_TOLERANCE)));
+
+    registerStateCommand(
+        State.SUBWOOFER,
+        new ParallelCommandGroup(
+            new RunCommand(() -> setFlywheelTarget(SUBWOOFER_SHOT)),
+            atSpeedCommand(() -> SUBWOOFER_SHOT, SUBWOOFER_TOLERANCE)));
+
     registerStateCommand(State.IDLE, this::stop);
     registerStateCommand(State.TRAP, () -> setFlywheelTarget(TRAP_SHOT));
   }
@@ -123,17 +135,16 @@ public class Flywheel extends StateMachine<Flywheel.State> {
     addOmniTransition(State.SUBWOOFER);
   }
 
-  public void setFlywheelTarget(double velocityRotPerSec) {
-    leader.setControl(request.withVelocity(velocityRotPerSec));
+  public void setFlywheelTarget(Measure<Velocity<Angle>> velocity) {
+    leader.setControl(request.withVelocity(velocity));
   }
 
-  private Command atSpeedCommand(DoubleSupplier speedProvider, double accuracy) {
+  private Command atSpeedCommand(
+      Supplier<Measure<Velocity<Angle>>> speedProvider, Measure<Velocity<Angle>> accuracy) {
     return new RunCommand(
         () -> {
-          if (Math.abs(
-                  leader.getVelocity().getValue().in(RotationsPerSecond)
-                      - speedProvider.getAsDouble())
-              < accuracy) {
+          if (leader.getVelocity().getValue().minus(speedProvider.get()).magnitude()
+              < accuracy.magnitude()) {
             setFlag(State.AT_SPEED);
           } else {
             clearFlag(State.AT_SPEED);
