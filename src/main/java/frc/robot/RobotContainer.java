@@ -18,8 +18,10 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.generated.TunerConstants;
+import frc.robot.subsystems.climber.Climber;
 import frc.robot.subsystems.drivetrain.CommandSwerveDrivetrain;
 import frc.robot.subsystems.drivetrain.SwerveRequests;
+import frc.robot.subsystems.flywheel.Flywheel;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.utils.statemachine.StateMachine;
 
@@ -29,6 +31,8 @@ public class RobotContainer extends StateMachine<RobotContainer.State> {
   public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
   private final Intake intake = new Intake();
+  private final Climber climber = new Climber();
+  private final Flywheel flywheel = new Flywheel(() -> 0); // TODO: Actually calculate distance to speaker
 
   private final SwerveRequests.FieldCentricSwerveSetpoint drive =
       new SwerveRequests.FieldCentricSwerveSetpoint(drivetrain::getState)
@@ -108,20 +112,38 @@ public class RobotContainer extends StateMachine<RobotContainer.State> {
 
   private void registerStateCommands() {
     registerStateCommand(
-        State.SOFT_E_STOP, Commands.parallel(intake.transitionCommand(Intake.State.SOFT_E_STOP)));
+        State.SOFT_E_STOP, Commands.parallel(
+          climber.transitionCommand(Climber.State.SOFT_E_STOP),
+          intake.transitionCommand(Intake.State.SOFT_E_STOP),
+          flywheel.transitionCommand(Flywheel.State.IDLE)
+          ));
 
     registerStateCommand(
-        State.GROUND_INTAKE, Commands.parallel(intake.transitionCommand(Intake.State.INTAKE_DOWN)));
+        State.GROUND_INTAKE, Commands.parallel(
+          intake.transitionCommand(Intake.State.INTAKE_DOWN),
+          flywheel.transitionCommand(Flywheel.State.IDLE)
+          ));
 
     registerStateCommand(
-        State.TRAVERSING, Commands.parallel(intake.transitionCommand(Intake.State.INTAKE_UP)));
+        State.TRAVERSING, Commands.parallel(
+          intake.transitionCommand(Intake.State.INTAKE_UP),
+          flywheel.transitionCommand(Flywheel.State.IDLE)
+          ));
 
     registerStateCommand(
-        State.SOURCE_INTAKE, Commands.parallel(intake.transitionCommand(Intake.State.INTAKE_UP)));
+        State.SOURCE_INTAKE, Commands.parallel(intake.transitionCommand(Intake.State.INTAKE_UP),flywheel.transitionCommand(Flywheel.State.IDLE)));
 
-    registerStateCommand(State.SHOOTING, Commands.parallel());
+    registerStateCommand(State.SHOOTING, Commands.parallel(flywheel.transitionCommand(Flywheel.State.SPEAKER)));
 
-    registerStateCommand(State.CLIMB, Commands.parallel());
+    registerStateCommand(State.AMP, Commands.parallel(flywheel.transitionCommand(Flywheel.State.AMP)));
+
+    registerStateCommand(State.CLIMB, Commands.parallel(
+      Commands.either(
+        climber.transitionCommand(Climber.State.TRAP_CLIMB),
+        climber.transitionCommand(Climber.State.QUICK_CLIMB),
+        () -> false // TODO: Fix once we have line breaks
+      )
+    ));
   }
 
   @Override
@@ -137,6 +159,7 @@ public class RobotContainer extends StateMachine<RobotContainer.State> {
     SOURCE_INTAKE,
     TRAVERSING,
     SHOOTING,
-    CLIMB
+    CLIMB,
+    AMP
   }
 }
