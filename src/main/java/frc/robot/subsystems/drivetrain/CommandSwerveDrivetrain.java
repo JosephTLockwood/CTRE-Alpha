@@ -1,6 +1,7 @@
 package frc.robot.subsystems.drivetrain;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
+import static edu.wpi.first.units.Units.Volts;
 
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.Utils;
@@ -42,6 +43,7 @@ import frc.robot.subsystems.vision.PhotonVisionSIM;
 import frc.robot.subsystems.vision.VisionProvider;
 import frc.robot.subsystems.vision.VisionReplay;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.Supplier;
 
 /**
@@ -54,6 +56,12 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
   private Notifier m_simNotifier = null;
   private Notifier m_visionNotifier = null;
   private double m_lastSimTime;
+
+  private final String[] cameras = new String[] {"limelight-fl"};
+  private final Transform3d[] cameraPositions =
+      new Transform3d[] {
+        (new Transform3d(new Translation3d(0.1, 0, 0.5), new Rotation3d(0, Math.toRadians(-15), 0)))
+      };
 
   /* Blue alliance sees forward as 0 degrees (toward red alliance wall) */
   private static final Rotation2d BlueAlliancePerspectiveRotation = Rotation2d.fromDegrees(0);
@@ -79,15 +87,11 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
       new SwerveRequest.SysIdSwerveSteerGains();
 
   private final VisionProvider photonVision =
-      new PhotonVisionSIM(
-          "limelight-fl",
-          new Transform3d(
-              new Translation3d(0.1, 0, 0.5), new Rotation3d(0, Math.toRadians(-15), 0)),
-          this::getState);
+      new PhotonVisionSIM(cameras, cameraPositions, this::getState);
 
-  private final VisionProvider limelightVision = new Limelight("limelight-fl", this::getState);
+  private final VisionProvider limelightVision = new Limelight(cameras, this::getState);
 
-  private final VisionProvider replayVision = new VisionReplay("limelight-fl", this::getState);
+  private final VisionProvider replayVision = new VisionReplay(cameras, this::getState);
 
   /* Use one of these sysidroutines for your particular test */
   private SysIdRoutine SysIdRoutineTranslation =
@@ -341,24 +345,19 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
         visionProvider = replayVision;
         break;
     }
-    String cameraName = visionProvider.getCameraName();
     m_visionNotifier =
         new Notifier(
             () -> {
-              final double currentTime = Utils.getCurrentTimeSeconds();
-              Pair<PoseEstimate, Vector<N3>> visionMeasurement =
+              List<Pair<PoseEstimate, Vector<N3>>> visionMeasurement =
                   visionProvider.updateVisionMeasurements();
-              // getTimeDiffrence
-              if (Boolean.TRUE.equals(
-                  LimelightHelpers.validPoseEstimate(visionMeasurement.getFirst()))) {
-                addVisionMeasurement(
-                    visionMeasurement.getFirst().pose,
-                    currentTime
-                        - VisionProvider.getTimeDiffrence(
-                            cameraName, visionMeasurement.getFirst().timestampSeconds)
-                        - visionMeasurement.getFirst().latency,
-                    // currentTime - visionMeasurement.getFirst().latency,
-                    visionMeasurement.getSecond());
+              for (Pair<PoseEstimate, Vector<N3>> measurement : visionMeasurement) {
+                if (Boolean.TRUE.equals(
+                    LimelightHelpers.validPoseEstimate(measurement.getFirst()))) {
+                  addVisionMeasurement(
+                      measurement.getFirst().pose,
+                      measurement.getFirst().timestampSeconds,
+                      measurement.getSecond());
+                }
               }
             });
     m_visionNotifier.startPeriodic(kSimLoopPeriod);

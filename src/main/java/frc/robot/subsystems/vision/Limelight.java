@@ -11,11 +11,11 @@ public class Limelight extends VisionProvider {
   /**
    * Constructs a Limelight object with the specified camera name and swerve state supplier.
    *
-   * @param cameraName the name of the camera
+   * @param cameraNames the name of the camera
    * @param swerveStateSupplier the supplier for the swerve drive state
    */
-  public Limelight(String cameraName, Supplier<SwerveDriveState> swerveStateSupplier) {
-    super(cameraName, swerveStateSupplier);
+  public Limelight(String[] cameraNames, Supplier<SwerveDriveState> swerveStateSupplier) {
+    super(cameraNames, swerveStateSupplier);
   }
 
   /**
@@ -24,7 +24,7 @@ public class Limelight extends VisionProvider {
    * @return the pose estimate representing the vision update
    */
   @Override
-  protected PoseEstimate[] getVisionUpdate() {
+  protected PoseEstimate[] getVisionUpdate(String cameraName) {
     LimelightHelpers.SetRobotOrientation(
         cameraName, swerveStateSupplier.get().Pose.getRotation().getDegrees(), 0, 0, 0, 0, 0);
     PoseEstimate mt1 = LimelightHelpers.getBotPoseEstimate_wpiBlue(cameraName);

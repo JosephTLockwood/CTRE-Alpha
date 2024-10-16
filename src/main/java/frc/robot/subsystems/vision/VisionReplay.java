@@ -1,14 +1,19 @@
 package frc.robot.subsystems.vision;
 
+import com.ctre.phoenix6.HootReplay;
 import com.ctre.phoenix6.HootReplay.SignalData;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
+import edu.wpi.first.math.Pair;
+import edu.wpi.first.math.VecBuilder;
+import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.numbers.N3;
 import frc.robot.LimelightHelpers.PoseEstimate;
 import frc.robot.LimelightHelpers.RawFiducial;
-import frc.robot.utils.SignalHandler;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.Supplier;
 
 public class VisionReplay extends VisionProvider {
@@ -16,40 +21,28 @@ public class VisionReplay extends VisionProvider {
   /**
    * Constructs a VisionReplay object with the specified camera name and swerve state supplier.
    *
-   * @param cameraName the name of the camera
+   * @param cameraNames the name of the camera
    * @param swerveStateSupplier the supplier for the swerve drive state
    */
-  public VisionReplay(String cameraName, Supplier<SwerveDriveState> swerveStateSupplier) {
-    super(cameraName, swerveStateSupplier);
+  public VisionReplay(String[] cameraNames, Supplier<SwerveDriveState> swerveStateSupplier) {
+    super(cameraNames, swerveStateSupplier);
   }
 
-  /**
-   * Retrieves the vision update from the Limelight.
-   *
-   * @return the pose estimate representing the vision update
-   */
   @Override
-  protected PoseEstimate[] getVisionUpdate() {
-    PoseEstimate mt1 = readPoseEstimate("Odometry/MT1/" + cameraName);
-    PoseEstimate mt2 = readPoseEstimate("Odometry/MT2/" + cameraName);
-    return new PoseEstimate[] {mt1, mt2};
-  }
-
-  /**
-   * Reads a pose estimate from the specified signal path.
-   *
-   * @param signalPath the path to the signal
-   * @return the pose estimate
-   */
-  private PoseEstimate readPoseEstimate(String signalPath) {
-    SignalData<Boolean> validPoseEstimate =
-        SignalHandler.readValue(signalPath + "/Valid/", Boolean.FALSE);
-    if (validPoseEstimate.status != StatusCode.OK
-        || Boolean.FALSE.equals(validPoseEstimate.value)) {
-      return new PoseEstimate();
+  public List<Pair<PoseEstimate, Vector<N3>>> updateVisionMeasurements() {
+    visionMeasurements.clear();
+    for (String cameraName : cameraNames) {
+      String signalPath = "Odometry/" + cameraName;
+      SignalData<Boolean> validPoseEstimate = HootReplay.getBoolean(signalPath + "/Valid/");
+      if (validPoseEstimate.status != StatusCode.OK
+          || Boolean.FALSE.equals(validPoseEstimate.value)) {
+        visionMeasurements.add(new Pair<>(new PoseEstimate(), VecBuilder.fill(0.0, 0.0, 0.0)));
+      }
+      RawFiducial[] rawFiducials = getFiducialsFromSignal(signalPath);
+      PoseEstimate mt = readPoseEstimateFromSignal(rawFiducials, signalPath);
+      visionMeasurements.add(getVisionMeasurement(mt));
     }
-    RawFiducial[] rawFiducials = getFiducialsFromSignal(signalPath);
-    return readPoseEstimateFromSignal(signalPath, rawFiducials);
+    return visionMeasurements;
   }
 
   /**
@@ -58,22 +51,22 @@ public class VisionReplay extends VisionProvider {
    * @param signalData the signal data
    * @return the pose estimate
    */
-  private PoseEstimate readPoseEstimateFromSignal(String signalPath, RawFiducial[] rawFiducials) {
-    SignalData<double[]> signalData = SignalHandler.readValue(signalPath, new double[] {});
+  private PoseEstimate readPoseEstimateFromSignal(RawFiducial[] rawFiducials, String signalPath) {
+    SignalData<double[]> signalData = HootReplay.getDoubleArray(signalPath);
     if (signalData.status != StatusCode.OK || signalData.value.length != 8) {
       return new PoseEstimate();
     }
-    double[] data = signalData.value;
     return new PoseEstimate(
-        new Pose2d(data[0], data[1], Rotation2d.fromDegrees(data[2])),
-        data[3],
-        data[4],
-        (int) data[5],
+        new Pose2d(
+            signalData.value[0], signalData.value[1], Rotation2d.fromDegrees(signalData.value[2])),
+        signalData.timestampSeconds - signalData.value[4],
+        signalData.value[4],
+        (int) signalData.value[5],
         0.0,
-        data[6],
+        signalData.value[6],
         0.0,
         rawFiducials,
-        data[7] == 1);
+        signalData.value[7] == 1);
   }
 
   /**
@@ -83,7 +76,7 @@ public class VisionReplay extends VisionProvider {
    * @return the fiducials
    */
   private RawFiducial[] getFiducialsFromSignal(String signalPath) {
-    SignalData<long[]> signalData = SignalHandler.readValue(signalPath + "/Tags/", new long[] {});
+    SignalData<long[]> signalData = HootReplay.getIntegerArray(signalPath + "/Tags/");
     if (signalData.status != StatusCode.OK) {
       return new RawFiducial[] {};
     }
