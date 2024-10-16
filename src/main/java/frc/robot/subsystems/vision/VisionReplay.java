@@ -5,11 +5,11 @@ import com.ctre.phoenix6.HootReplay.SignalData;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.Pair;
-import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.numbers.N3;
+import frc.robot.LimelightHelpers;
 import frc.robot.LimelightHelpers.PoseEstimate;
 import frc.robot.LimelightHelpers.RawFiducial;
 import java.util.Arrays;
@@ -34,15 +34,19 @@ public class VisionReplay extends VisionProvider {
     for (String cameraName : cameraNames) {
       String signalPath = "Odometry/" + cameraName;
       SignalData<Boolean> validPoseEstimate = HootReplay.getBoolean(signalPath + "/Valid/");
-      if (validPoseEstimate.status != StatusCode.OK
-          || Boolean.FALSE.equals(validPoseEstimate.value)) {
-        visionMeasurements.add(new Pair<>(new PoseEstimate(), VecBuilder.fill(0.0, 0.0, 0.0)));
+      if (validPoseEstimate.status == StatusCode.OK
+          && Boolean.TRUE.equals(validPoseEstimate.value)) {
+        RawFiducial[] rawFiducials = getFiducialsFromSignal(signalPath);
+        PoseEstimate mt = readPoseEstimateFromSignal(rawFiducials, signalPath);
+        if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(mt))) {
+          visionMeasurements.add(getVisionMeasurement(mt));
+        }
       }
-      RawFiducial[] rawFiducials = getFiducialsFromSignal(signalPath);
-      PoseEstimate mt = readPoseEstimateFromSignal(rawFiducials, signalPath);
-      visionMeasurements.add(getVisionMeasurement(mt));
     }
-    return visionMeasurements;
+    return visionMeasurements.stream()
+        .sorted(
+            (a, b) -> Double.compare(a.getFirst().timestampSeconds, b.getFirst().timestampSeconds))
+        .toList();
   }
 
   /**

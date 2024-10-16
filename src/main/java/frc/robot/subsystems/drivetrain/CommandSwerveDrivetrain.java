@@ -351,6 +351,9 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
               List<Pair<PoseEstimate, Vector<N3>>> visionMeasurement =
                   visionProvider.updateVisionMeasurements();
               for (Pair<PoseEstimate, Vector<N3>> measurement : visionMeasurement) {
+                // This check should not be necessary (current code only adds valid poses to list),
+                // but it
+                // is here to ensure that the all poses are valid with other implementations
                 if (Boolean.TRUE.equals(
                     LimelightHelpers.validPoseEstimate(measurement.getFirst()))) {
                   addVisionMeasurement(

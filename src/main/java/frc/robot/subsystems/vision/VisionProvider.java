@@ -46,9 +46,15 @@ public abstract class VisionProvider {
       mt2 = adjustPoseEstimate(signalPath + "/MT2/", mt2);
       PoseEstimate mt = filterPoseEstimate(mt1, mt2);
       writePoseEstimate(signalPath, mt);
-      visionMeasurements.add(getVisionMeasurement(mt));
+      if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(mt))) {
+        visionMeasurements.add(getVisionMeasurement(mt));
+      }
     }
-    return visionMeasurements;
+    // Sort by timestamp
+    return visionMeasurements.stream()
+        .sorted(
+            (a, b) -> Double.compare(a.getFirst().timestampSeconds, b.getFirst().timestampSeconds))
+        .toList();
   }
 
   /**
@@ -118,6 +124,8 @@ public abstract class VisionProvider {
    * @return the vision measurement
    */
   public Pair<PoseEstimate, Vector<N3>> getVisionMeasurement(PoseEstimate mt) {
+    // This check should not be necessary (current code only adds valid poses reach here),
+    // To ensure that the all poses are valid with other implementations
     if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
       return new Pair<>(mt, VecBuilder.fill(0.0, 0.0, 0.0));
     }
