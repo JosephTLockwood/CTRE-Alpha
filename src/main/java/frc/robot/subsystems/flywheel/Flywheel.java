@@ -106,6 +106,7 @@ public class Flywheel extends StateMachine<Flywheel.State> {
         new ParallelCommandGroup(
             new InstantCommand(() -> setFlywheelTarget(AMP_SHOT)),
             atSpeedCommand(() -> AMP_SHOT, AMP_TOLERANCE)));
+
     registerStateCommand(
         State.SPEAKER,
         new ParallelCommandGroup(

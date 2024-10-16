@@ -4,15 +4,15 @@
 
 package frc.robot;
 
-import static edu.wpi.first.units.Units.*;
-
 import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveModule.SteerRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.NamedCommands;
+
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import static edu.wpi.first.units.Units.MetersPerSecond;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
@@ -23,6 +23,7 @@ import frc.robot.subsystems.drivetrain.CommandSwerveDrivetrain;
 import frc.robot.subsystems.drivetrain.SwerveRequests;
 import frc.robot.subsystems.flywheel.Flywheel;
 import frc.robot.subsystems.intake.Intake;
+import frc.robot.subsystems.linebreak.LineBreak;
 import frc.robot.utils.statemachine.StateMachine;
 
 public class RobotContainer extends StateMachine<RobotContainer.State> {
@@ -30,9 +31,11 @@ public class RobotContainer extends StateMachine<RobotContainer.State> {
   private final CommandXboxController joystick = new CommandXboxController(0);
   public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
+  private final LineBreak lineBreak = new LineBreak();
   private final Intake intake = new Intake();
   private final Climber climber = new Climber();
-  private final Flywheel flywheel = new Flywheel(() -> 0); // TODO: Actually calculate distance to speaker
+  private final Flywheel flywheel =
+      new Flywheel(() -> 0); // TODO: Actually calculate distance to speaker
 
   private final SwerveRequests.FieldCentricSwerveSetpoint drive =
       new SwerveRequests.FieldCentricSwerveSetpoint(drivetrain::getState)
@@ -112,38 +115,43 @@ public class RobotContainer extends StateMachine<RobotContainer.State> {
 
   private void registerStateCommands() {
     registerStateCommand(
-        State.SOFT_E_STOP, Commands.parallel(
-          climber.transitionCommand(Climber.State.SOFT_E_STOP),
-          intake.transitionCommand(Intake.State.SOFT_E_STOP),
-          flywheel.transitionCommand(Flywheel.State.IDLE)
-          ));
+        State.SOFT_E_STOP,
+        Commands.parallel(
+            climber.transitionCommand(Climber.State.SOFT_E_STOP),
+            intake.transitionCommand(Intake.State.SOFT_E_STOP),
+            flywheel.transitionCommand(Flywheel.State.IDLE)));
 
     registerStateCommand(
-        State.GROUND_INTAKE, Commands.parallel(
-          intake.transitionCommand(Intake.State.INTAKE_DOWN),
-          flywheel.transitionCommand(Flywheel.State.IDLE)
-          ));
+        State.GROUND_INTAKE,
+        Commands.parallel(
+            intake.transitionCommand(Intake.State.INTAKE_DOWN),
+            flywheel.transitionCommand(Flywheel.State.IDLE)));
 
     registerStateCommand(
-        State.TRAVERSING, Commands.parallel(
-          intake.transitionCommand(Intake.State.INTAKE_UP),
-          flywheel.transitionCommand(Flywheel.State.IDLE)
-          ));
+        State.TRAVERSING,
+        Commands.parallel(
+            intake.transitionCommand(Intake.State.INTAKE_UP),
+            flywheel.transitionCommand(Flywheel.State.IDLE)));
 
     registerStateCommand(
-        State.SOURCE_INTAKE, Commands.parallel(intake.transitionCommand(Intake.State.INTAKE_UP),flywheel.transitionCommand(Flywheel.State.IDLE)));
+        State.SOURCE_INTAKE,
+        Commands.parallel(
+            intake.transitionCommand(Intake.State.INTAKE_UP),
+            flywheel.transitionCommand(Flywheel.State.IDLE)));
 
-    registerStateCommand(State.SHOOTING, Commands.parallel(flywheel.transitionCommand(Flywheel.State.SPEAKER)));
+    registerStateCommand(
+        State.SHOOTING, Commands.parallel(flywheel.transitionCommand(Flywheel.State.SPEAKER)));
 
-    registerStateCommand(State.AMP, Commands.parallel(flywheel.transitionCommand(Flywheel.State.AMP)));
+    registerStateCommand(
+        State.AMP, Commands.parallel(flywheel.transitionCommand(Flywheel.State.AMP)));
 
-    registerStateCommand(State.CLIMB, Commands.parallel(
-      Commands.either(
-        climber.transitionCommand(Climber.State.TRAP_CLIMB),
-        climber.transitionCommand(Climber.State.QUICK_CLIMB),
-        () -> false // TODO: Fix once we have line breaks
-      )
-    ));
+    registerStateCommand(
+        State.CLIMB,
+        Commands.parallel(
+            Commands.either(
+                climber.transitionCommand(Climber.State.TRAP_CLIMB),
+                climber.transitionCommand(Climber.State.QUICK_CLIMB),
+                () -> lineBreak.getState() == LineBreak.State.LOADED)));
   }
 
   @Override
