@@ -1,6 +1,7 @@
 package frc.robot.subsystems.vision;
 
 import com.ctre.phoenix6.SignalLogger;
+import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.VecBuilder;
@@ -11,16 +12,17 @@ import edu.wpi.first.networktables.NetworkTablesJNI;
 import edu.wpi.first.wpilibj.DriverStation;
 import frc.robot.LimelightHelpers;
 import frc.robot.LimelightHelpers.PoseEstimate;
-import frc.robot.RobotMode;
 import frc.robot.generated.TunerConstants;
-import frc.robot.utils.SignalHandler;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.Supplier;
 
 /** Represents a vision provider. */
 public abstract class VisionProvider {
-  protected String cameraName;
+  protected String[] cameraNames;
   protected Supplier<SwerveDriveState> swerveStateSupplier;
+  protected ArrayList<Pair<PoseEstimate, Vector<N3>>> visionMeasurements = new ArrayList<>();
 
   /**
    * Constructs a VisionProvider object with the specified camera name and swerve state supplier.
@@ -28,25 +30,25 @@ public abstract class VisionProvider {
    * @param cameraName the name of the camera
    * @param swerveStateSupplier the supplier for the swerve drive state
    */
-  protected VisionProvider(String cameraName, Supplier<SwerveDriveState> swerveStateSupplier) {
-    this.cameraName = cameraName;
+  protected VisionProvider(String[] cameraNames, Supplier<SwerveDriveState> swerveStateSupplier) {
+    this.cameraNames = cameraNames;
     this.swerveStateSupplier = swerveStateSupplier;
   }
 
-  /**
-   * Updates the vision measurements.
-   *
-   * @return the vision measurements
-   */
-  public Pair<PoseEstimate, Vector<N3>> updateVisionMeasurements() {
-    PoseEstimate[] mtArray = getVisionUpdate();
-    PoseEstimate mt1 = mtArray[0];
-    PoseEstimate mt2 = mtArray[1];
-    writePoseEstimate("Odometry/MT1/" + cameraName, mt1);
-    writePoseEstimate("Odometry/MT2/" + cameraName, mt2);
-    PoseEstimate mt = filterPoseEstimate(mt1, mt2, swerveStateSupplier);
-    writePoseEstimate("Odometry/" + cameraName, mt);
-    return getVisionMeasurement(mt);
+  public List<Pair<PoseEstimate, Vector<N3>>> updateVisionMeasurements() {
+    visionMeasurements.clear();
+    for (String cameraName : cameraNames) {
+      String signalPath = "Odometry/" + cameraName;
+      PoseEstimate[] mtArray = getVisionUpdate(cameraName);
+      PoseEstimate mt1 = mtArray[0];
+      PoseEstimate mt2 = mtArray[1];
+      mt1 = adjustPoseEstimate(signalPath + "/MT1/", mt1);
+      mt2 = adjustPoseEstimate(signalPath + "/MT2/", mt2);
+      PoseEstimate mt = filterPoseEstimate(mt1, mt2);
+      writePoseEstimate(signalPath, mt);
+      visionMeasurements.add(getVisionMeasurement(mt));
+    }
+    return visionMeasurements;
   }
 
   /**
@@ -55,7 +57,7 @@ public abstract class VisionProvider {
    * @return the pose estimate representing the vision update Note: This method is abstract and must
    *     be implemented by a subclass.
    */
-  protected PoseEstimate[] getVisionUpdate() {
+  protected PoseEstimate[] getVisionUpdate(String cameraName) {
     return new PoseEstimate[] {new PoseEstimate(), new PoseEstimate()};
   }
 
@@ -67,11 +69,10 @@ public abstract class VisionProvider {
    * @param swerveStateSupplier The supplier for the swerve drive state
    * @return The filtered pose estimate
    */
-  protected static PoseEstimate filterPoseEstimate(
-      PoseEstimate mt1, PoseEstimate mt2, Supplier<SwerveDriveState> swerveStateSupplier) {
+  protected PoseEstimate filterPoseEstimate(PoseEstimate mt1, PoseEstimate mt2) {
     PoseEstimate mt = DriverStation.isEnabled() ? mt1 : mt2;
     // If our angular velocity is greater than 80 degrees per second
-    if (Math.abs(swerveStateSupplier.get().Speeds.omegaRadiansPerSecond)
+    if (Math.abs(this.swerveStateSupplier.get().Speeds.omegaRadiansPerSecond)
             > Units.degreesToRadians(80)
         || Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
       return new PoseEstimate();
@@ -79,9 +80,17 @@ public abstract class VisionProvider {
     return mt;
   }
 
-  protected static void writePoseEstimate(String signalPath, PoseEstimate poseEstimate) {
+  private PoseEstimate adjustPoseEstimate(String signalPath, PoseEstimate poseEstimate) {
+    double ntLatency = NetworkTablesJNI.now() * 1.0e-6 - poseEstimate.timestampSeconds;
+    poseEstimate.timestampSeconds =
+        Utils.getCurrentTimeSeconds() - (ntLatency + poseEstimate.latency);
+    writePoseEstimate(signalPath, poseEstimate);
+    return poseEstimate;
+  }
+
+  private void writePoseEstimate(String signalPath, PoseEstimate poseEstimate) {
     if (Boolean.TRUE.equals(LimelightHelpers.validPoseEstimate(poseEstimate))) {
-      SignalHandler.writeValue(
+      SignalLogger.writeDoubleArray(
           signalPath,
           new double[] {
             poseEstimate.pose.getX(),
@@ -94,11 +103,11 @@ public abstract class VisionProvider {
             poseEstimate.isMegaTag2 ? 1 : 0
           });
       long[] tagIds = Arrays.stream(poseEstimate.rawFiducials).mapToLong(id -> id.id).toArray();
-      SignalHandler.writeValue(signalPath + "/Tags/", tagIds);
+      SignalLogger.writeIntegerArray(signalPath + "/Tags/", tagIds);
       SignalLogger.writeBoolean(signalPath + "/Valid/", true);
-      return;
+    } else {
+      SignalLogger.writeBoolean(signalPath + "/Valid/", false);
     }
-    SignalLogger.writeBoolean(signalPath + "/Valid/", false);
   }
 
   /**
@@ -108,7 +117,7 @@ public abstract class VisionProvider {
    * @param mt the pose estimate
    * @return the vision measurement
    */
-  private Pair<PoseEstimate, Vector<N3>> getVisionMeasurement(PoseEstimate mt) {
+  public Pair<PoseEstimate, Vector<N3>> getVisionMeasurement(PoseEstimate mt) {
     if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
       return new Pair<>(mt, VecBuilder.fill(0.0, 0.0, 0.0));
     }
@@ -118,28 +127,13 @@ public abstract class VisionProvider {
   }
 
   /**
-   * Gets the time diffrence between the current time and the timestamp.
-   *
-   * @return the time diffrence between the current time and the timestamp
-   */
-  public static double getTimeDiffrence(String cameraName, double timestampSeconds) {
-    String timeDifPath = "Odometry/" + cameraName + "/Time Diffrence/";
-    if (RobotMode.getMode() == RobotMode.Mode.REPLAY) {
-      return SignalHandler.readValue(timeDifPath, 0.0).value;
-    }
-    double timeDiffrence = NetworkTablesJNI.now() * 1.0e-6 - timestampSeconds;
-    SignalHandler.writeValue(timeDifPath, timeDiffrence);
-    return timeDiffrence;
-  }
-
-  /**
    * Calculate the standard deviation of the x and y coordinates.
    *
    * @param avgTagDist The pose estimate
    * @param tagPosesSize The number of detected tag poses
    * @return The standard deviation of the x and y coordinates
    */
-  private static double calculateXYStdDev(PoseEstimate mt) {
+  private double calculateXYStdDev(PoseEstimate mt) {
     return TunerConstants.visionStandardDeviationXY * Math.pow(mt.avgTagDist, 2.0) / mt.tagCount;
   }
 
@@ -150,16 +144,7 @@ public abstract class VisionProvider {
    * @param tagPosesSize The number of detected tag poses
    * @return The standard deviation of the theta coordinate
    */
-  private static double calculateThetaStdDev(PoseEstimate mt) {
+  private double calculateThetaStdDev(PoseEstimate mt) {
     return TunerConstants.visionStandardDeviationTheta * Math.pow(mt.avgTagDist, 2.0) / mt.tagCount;
-  }
-
-  /**
-   * Gets the camera name.
-   *
-   * @return the camera name
-   */
-  public String getCameraName() {
-    return this.cameraName;
   }
 }

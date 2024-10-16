@@ -34,51 +34,68 @@ public class PhotonVisionSIM extends VisionProvider {
    *
    * @param cameraName Name of Camera
    */
-  private final PhotonCamera camera;
+  private PhotonCamera camera;
 
-  private final PhotonPoseEstimator photonEstimator;
+  private PhotonPoseEstimator photonEstimator;
   private VisionSystemSim visionSim;
   private PhotonCameraSim cameraSim;
 
   private double lastEstTimestamp = 0;
 
   public PhotonVisionSIM(
-      String cameraName,
-      Transform3d robotToCamera,
+      String[] cameraNames,
+      Transform3d[] robotToCameras,
       Supplier<SwerveDriveState> swerveStateSupplier) {
-    super(cameraName, swerveStateSupplier);
-    camera = new PhotonCamera(cameraName);
-    photonEstimator =
-        new PhotonPoseEstimator(
-            FieldConstants.aprilTags,
-            PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
-            camera,
-            robotToCamera);
-    photonEstimator.setMultiTagFallbackStrategy(PoseStrategy.LOWEST_AMBIGUITY);
+    super(cameraNames, swerveStateSupplier);
+
+    // Check if cameraNames and robotToCameras are the same length
+    if (cameraNames.length != robotToCameras.length) {
+      throw new IllegalArgumentException(
+          "cameraNames and robotToCameras must be the same length. cameraNames: "
+              + cameraNames.length
+              + ", robotToCameras: "
+              + robotToCameras.length);
+    }
+
     // Create the vision system simulation which handles cameras and targets on the
     // field.
     visionSim = new VisionSystemSim("main");
     // Add all the AprilTags inside the tag layout as visible targets to this
     // simulated field.
     visionSim.addAprilTags(FieldConstants.aprilTags);
-    // Create simulated camera properties. These can be set to mimic your actual
-    // camera.
-    var cameraProp = new SimCameraProperties();
-    cameraProp.setCalibration(960, 720, Rotation2d.fromDegrees(90));
-    // Approximate detection noise with average and standard deviation error in pixels.
-    cameraProp.setCalibError(0.25, 0.08);
-    // Set the camera image capture framerate (Note: this is limited by robot loop rate).
-    cameraProp.setFPS(20);
-    // The average and standard deviation in milliseconds of image data latency.
-    cameraProp.setAvgLatencyMs(35);
-    cameraProp.setLatencyStdDevMs(5);
-    // Create a PhotonCameraSim which will update the linked PhotonCamera's values
-    // with visible
-    // targets.
-    cameraSim = new PhotonCameraSim(camera, cameraProp);
-    // Add the simulated camera to view the targets on this simulated field.
-    visionSim.addCamera(cameraSim, robotToCamera);
-    cameraSim.enableDrawWireframe(true);
+
+    for (int i = 0; i < cameraNames.length; i++) {
+      // Get robotToCameras for the current camera
+      String cameraName = cameraNames[i];
+      var robotToCamera = robotToCameras[i];
+      camera = new PhotonCamera(cameraName);
+      photonEstimator =
+          new PhotonPoseEstimator(
+              FieldConstants.aprilTags,
+              PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
+              camera,
+              robotToCamera);
+      photonEstimator.setMultiTagFallbackStrategy(PoseStrategy.LOWEST_AMBIGUITY);
+
+      // Create simulated camera properties. These can be set to mimic your actual
+      // camera.
+      var cameraProp = new SimCameraProperties();
+      cameraProp.setCalibration(960, 720, Rotation2d.fromDegrees(90));
+      // Approximate detection noise with average and standard deviation error in pixels.
+      cameraProp.setCalibError(0.25, 0.08);
+      // Set the camera image capture framerate (Note: this is limited by robot loop rate).
+      cameraProp.setFPS(20);
+      // The average and standard deviation in milliseconds of image data latency.
+      cameraProp.setAvgLatencyMs(35);
+      cameraProp.setLatencyStdDevMs(5);
+      // Create a PhotonCameraSim which will update the linked PhotonCamera's values
+      // with visible
+      // targets.
+      cameraSim = new PhotonCameraSim(camera, cameraProp);
+      // Add the simulated camera to view the targets on this simulated field.
+      visionSim.addCamera(cameraSim, robotToCamera);
+      cameraSim.enableDrawWireframe(true);
+    }
   }
 
   /**
@@ -87,7 +104,7 @@ public class PhotonVisionSIM extends VisionProvider {
    * @return the pose estimate representing the vision update
    */
   @Override
-  protected PoseEstimate[] getVisionUpdate() {
+  protected PoseEstimate[] getVisionUpdate(String cameraName) {
     visionSim.update(swerveStateSupplier.get().Pose);
     visionSim.getDebugField();
     PhotonPipelineResult results = cameraSim.getCamera().getLatestResult();
