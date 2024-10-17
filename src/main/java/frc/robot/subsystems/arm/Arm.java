@@ -1,6 +1,9 @@
 package frc.robot.subsystems.arm;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.Degree;
+import static edu.wpi.first.units.Units.Degrees;
+import static edu.wpi.first.units.Units.Radians;
+import static edu.wpi.first.units.Units.Rotations;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusCode;
@@ -18,6 +21,7 @@ import com.ctre.phoenix6.signals.SensorDirectionValue;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.units.Angle;
 import edu.wpi.first.units.Current;
+import edu.wpi.first.units.Distance;
 import edu.wpi.first.units.Measure;
 import edu.wpi.first.units.Temperature;
 import edu.wpi.first.units.Velocity;
@@ -58,24 +62,28 @@ public class Arm extends StateMachine<Arm.State> {
   private static final Measure<Angle> AMP_WRIST = Degree.of(3.6);
   private static final Measure<Angle> TRAP_WRIST = Degree.of(3.6);
   private static final Measure<Angle> INTAKE_WRIST = Degree.of(3.6);
-  private static final Measure<Angle> AMP_WRIST_TOLERANCE = Degree.of(3.6);
-  private static final Measure<Angle> TRAP_WRIST_TOLERANCE = Degree.of(3.6);
-  private static final Measure<Angle> INTAKE_WRIST_TOLERANCE = Degree.of(3.6);
-  private static final Measure<Angle> SPEAKER_WRIST_TOLERANCE = Degree.of(3.6);
+  private static final Measure<Angle> SOURCE_INTAKE_WRIST = Degree.of(3.6);
+  private static final Measure<Angle> AMP_WRIST_TOLERANCE = Degree.of(1.0);
+  private static final Measure<Angle> TRAP_WRIST_TOLERANCE = Degree.of(1.0);
+  private static final Measure<Angle> INTAKE_WRIST_TOLERANCE = Degree.of(1.0);
+  private static final Measure<Angle> SPEAKER_WRIST_TOLERANCE = Degree.of(1.0);
+  private static final Measure<Angle> SOURCE_INTAKE_WRIST_TOLERANCE = Degree.of(1.0);
   private static final Measure<Angle> AMP_ARM = Degree.of(3.6);
   private static final Measure<Angle> TRAP_ARM = Degree.of(3.6);
   private static final Measure<Angle> INTAKE_ARM = Degree.of(3.6);
   private static final Measure<Angle> SPEAKER_ARM = Degree.of(3.6);
-  private static final Measure<Angle> AMP_ARM_TOLERANCE = Degree.of(3.6);
-  private static final Measure<Angle> TRAP_ARM_TOLERANCE = Degree.of(3.6);
-  private static final Measure<Angle> INTAKE_ARM_TOLERANCE = Degree.of(3.6);
-  private static final Measure<Angle> SPEAKER_ARM_TOLERANCE = Degree.of(3.6);
+  private static final Measure<Angle> SOURCE_INTAKE_ARM = Degree.of(1.0);
+  private static final Measure<Angle> AMP_ARM_TOLERANCE = Degree.of(1.0);
+  private static final Measure<Angle> TRAP_ARM_TOLERANCE = Degree.of(1.0);
+  private static final Measure<Angle> INTAKE_ARM_TOLERANCE = Degree.of(1.0);
+  private static final Measure<Angle> SPEAKER_ARM_TOLERANCE = Degree.of(1.0);
+  private static final Measure<Angle> SOURCE_INTAKE_ARM_TOLERANCE = Degree.of(1.0);
 
-  private Supplier<Measure<Angle>> speaker;
+  private Supplier<Measure<Distance>> speakerDistance;
 
-  public Arm(Supplier<Measure<Angle>> speaker) {
+  public Arm(Supplier<Measure<Distance>> speakerDistance) {
     super("Arm", State.UNDETERMINED, State.class);
-    this.speaker = speaker;
+    this.speakerDistance = speakerDistance;
     registerStateCommands();
     registerTransitions();
     configureMotors();
@@ -157,9 +165,12 @@ public class Arm extends StateMachine<Arm.State> {
     registerStateCommand(
         State.SPEAKER,
         new ParallelCommandGroup(
-            new InstantCommand(() -> setArmAndWristTargets(SPEAKER_ARM, speaker.get())),
+            new InstantCommand(() -> setArmAndWristTargets(SPEAKER_ARM, Degrees.of(0))),
             atPositionCommand(
-                () -> SPEAKER_ARM, speaker, SPEAKER_ARM_TOLERANCE, SPEAKER_WRIST_TOLERANCE)));
+                () -> SPEAKER_ARM,
+                () -> Degrees.of(0),
+                SPEAKER_ARM_TOLERANCE,
+                SPEAKER_WRIST_TOLERANCE)));
     registerStateCommand(
         State.AMP,
         new ParallelCommandGroup(
@@ -172,6 +183,15 @@ public class Arm extends StateMachine<Arm.State> {
             new InstantCommand(() -> setArmAndWristTargets(TRAP_ARM, TRAP_WRIST)),
             atPositionCommand(
                 () -> TRAP_ARM, () -> TRAP_WRIST, TRAP_ARM_TOLERANCE, TRAP_WRIST_TOLERANCE)));
+    registerStateCommand(
+        State.SOURCE_INTAKE,
+        new ParallelCommandGroup(
+            new InstantCommand(() -> setArmAndWristTargets(SOURCE_INTAKE_ARM, SOURCE_INTAKE_WRIST)),
+            atPositionCommand(
+                () -> SOURCE_INTAKE_ARM,
+                () -> SOURCE_INTAKE_WRIST,
+                SOURCE_INTAKE_ARM_TOLERANCE,
+                SOURCE_INTAKE_WRIST_TOLERANCE)));
   }
 
   private void registerTransitions() {
@@ -180,6 +200,7 @@ public class Arm extends StateMachine<Arm.State> {
     addOmniTransition(State.TRAP);
     addOmniTransition(State.INTAKE);
     addOmniTransition(State.IDLE);
+    addOmniTransition(State.SOURCE_INTAKE);
   }
 
   public void setArmAndWristTargets(Measure<Angle> armTarget, Measure<Angle> wristTarget) {
@@ -238,6 +259,7 @@ public class Arm extends StateMachine<Arm.State> {
     SPEAKER,
     AMP,
     TRAP,
+    SOURCE_INTAKE,
 
     // flags
     ARM_AT_POSITION,
