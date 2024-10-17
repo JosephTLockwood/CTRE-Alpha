@@ -21,6 +21,12 @@
           "data": {
             "pathName": "W1-C1"
           }
+        },
+        {
+          "type": "wait",
+          "data": {
+            "waitTime": 0
+          }
         }
       ]
     }
