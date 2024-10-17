@@ -3,25 +3,41 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 2.252412584295367,
-        "y": 5.3842220267222
+        "x": 1.3760861685424453,
+        "y": 6.570857554526497
       },
       "prevControl": null,
       "nextControl": {
-        "x": 1.1707068447249482,
-        "y": 5.610147909037542
+        "x": 2.2610363295825158,
+        "y": 6.668490744362667
       },
       "isLocked": false,
-      "linkedName": "W2_Shoot"
+      "linkedName": null
     },
     {
       "anchor": {
-        "x": 2.4235685557463826,
-        "y": 6.554928871447148
+        "x": 7.509520499468048,
+        "y": 6.570857554526497
       },
       "prevControl": {
-        "x": 1.773175864232523,
-        "y": 6.226309406261197
+        "x": 6.4676345283466015,
+        "y": 6.506266628395175
+      },
+      "nextControl": {
+        "x": 7.759041469132136,
+        "y": 6.586326416730718
+      },
+      "isLocked": false,
+      "linkedName": null
+    },
+    {
+      "anchor": {
+        "x": 1.3760861685424453,
+        "y": 6.570857554526497
+      },
+      "prevControl": {
+        "x": 3.8853645507455794,
+        "y": 6.3555618609688285
       },
       "nextControl": null,
       "isLocked": false,
@@ -42,13 +58,13 @@
   },
   "goalEndState": {
     "velocity": 0,
-    "rotation": -149.13319054886284
+    "rotation": 0.0
   },
   "reversed": false,
   "folder": null,
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 179.5103044068708
+    "rotation": 0.0
   },
   "useDefaultConstraints": true
 }
