@@ -115,21 +115,21 @@ public class PhotonVision implements Runnable {
       return;
     }
     double xyStdDev = calculateXYStdDev(mt);
-    double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
+    double thetaStdDev = mt.isMegaTag2() ? 9999999 : calculateThetaStdDev(mt);
     SignalHandler.writeValue(
         "Odometry/" + cameraName,
-        new double[] {mt.pose.getX(), mt.pose.getY(), mt.pose.getRotation().getDegrees()});
+        new double[] {mt.pose().getX(), mt.pose().getY(), mt.pose().getRotation().getDegrees()});
     poseEstimates.add(new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev)));
     // Sort poseEstimates and send to consumer
     poseEstimates.stream()
         .sorted(
             Comparator.comparingDouble(
-                pair -> pair.getFirst().timestampSeconds - pair.getFirst().latency))
+                pair -> pair.getFirst().timestampSeconds() - pair.getFirst().latency()))
         .forEach(
             pair ->
                 poseConsumer.addVisionMeasurement(
-                    pair.getFirst().pose,
-                    pair.getFirst().timestampSeconds - pair.getFirst().latency,
+                    pair.getFirst().pose(),
+                    pair.getFirst().timestampSeconds() - pair.getFirst().latency(),
                     pair.getSecond()));
   }
 
@@ -140,7 +140,7 @@ public class PhotonVision implements Runnable {
     double timestamp = results.getTimestampSeconds();
     Optional<Alliance> allianceOptional = DriverStation.getAlliance();
     if (results.targets.isEmpty() || allianceOptional.isEmpty()) {
-      return new PoseEstimate();
+      return PoseEstimate.DEFAULT;
     }
     double latencyMS = results.getLatencyMillis();
     Optional<EstimatedRobotPose> estimatedPose = getEstimatedGlobalPose();
@@ -172,14 +172,14 @@ public class PhotonVision implements Runnable {
 
       PoseEstimate mt = VisionHelper.filterPoseEstimate(mt1, mt2, swerveStateSupplier);
       if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
-        return new PoseEstimate();
+        return PoseEstimate.DEFAULT;
       }
       VisionHelper.writePoseEstimate("Odometry/MT1/" + cameraName, mt1);
       VisionHelper.writePoseEstimate("Odometry/MT2/" + cameraName, mt2);
 
       return mt;
     }
-    return new PoseEstimate();
+    return PoseEstimate.DEFAULT;
   }
 
   private PoseEstimate makePoseEstimate(
@@ -189,18 +189,19 @@ public class PhotonVision implements Runnable {
       int[] tagIds,
       double avgTagDist,
       boolean isMegaTag2) {
-    PoseEstimate poseEstimate = new PoseEstimate();
-    poseEstimate.pose = pose;
-    poseEstimate.timestampSeconds = timestampSeconds;
-    poseEstimate.latency = latencyMS / 1e3;
-    poseEstimate.tagCount = tagIds.length;
-    poseEstimate.avgTagDist = avgTagDist;
-    poseEstimate.isMegaTag2 = isMegaTag2;
-    poseEstimate.rawFiducials =
+
+    return new PoseEstimate(
+        pose,
+        timestampSeconds,
+        latencyMS / 1e3,
+        tagIds.length,
+        0,
+        avgTagDist,
+        0,
         Arrays.stream(tagIds)
             .mapToObj(id -> new RawFiducial(id, 0, 0, 0, 0, 0, 0))
-            .toArray(RawFiducial[]::new);
-    return poseEstimate;
+            .toArray(RawFiducial[]::new),
+        isMegaTag2);
   }
 
   /** Updates the PhotonPoseEstimator and returns the estimated global pose. */
@@ -232,7 +233,9 @@ public class PhotonVision implements Runnable {
    * @return The standard deviation of the x and y coordinates
    */
   private double calculateXYStdDev(PoseEstimate mt) {
-    return TunerConstants.visionStandardDeviationXY * Math.pow(mt.avgTagDist, 2.0) / mt.tagCount;
+    return TunerConstants.visionStandardDeviationXY
+        * Math.pow(mt.avgTagDist(), 2.0)
+        / mt.tagCount();
   }
 
   /**
@@ -243,7 +246,9 @@ public class PhotonVision implements Runnable {
    * @return The standard deviation of the theta coordinate
    */
   private double calculateThetaStdDev(PoseEstimate mt) {
-    return TunerConstants.visionStandardDeviationTheta * Math.pow(mt.avgTagDist, 2.0) / mt.tagCount;
+    return TunerConstants.visionStandardDeviationTheta
+        * Math.pow(mt.avgTagDist(), 2.0)
+        / mt.tagCount();
   }
 
   @FunctionalInterface

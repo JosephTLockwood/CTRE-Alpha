@@ -74,6 +74,7 @@ dependencies {
     simulationRelease wpi.sim.enableRelease()
 
     implementation 'org.codehaus.groovy:groovy-all:2.4.15'
+    implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.17.0'
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

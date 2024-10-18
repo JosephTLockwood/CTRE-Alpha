@@ -18,16 +18,16 @@ public final class VisionHelper {
       SignalHandler.writeValue(
           signalPath,
           new double[] {
-            poseEstimate.pose.getX(),
-            poseEstimate.pose.getY(),
-            poseEstimate.pose.getRotation().getDegrees(),
-            poseEstimate.timestampSeconds,
-            poseEstimate.latency,
-            poseEstimate.tagCount,
-            poseEstimate.avgTagDist,
-            poseEstimate.isMegaTag2 ? 1 : 0
+            poseEstimate.pose().getX(),
+            poseEstimate.pose().getY(),
+            poseEstimate.pose().getRotation().getDegrees(),
+            poseEstimate.timestampSeconds(),
+            poseEstimate.latency(),
+            poseEstimate.tagCount(),
+            poseEstimate.avgTagDist(),
+            poseEstimate.isMegaTag2() ? 1 : 0
           });
-      long[] tagIds = Arrays.stream(poseEstimate.rawFiducials).mapToLong(id -> id.id).toArray();
+      long[] tagIds = Arrays.stream(poseEstimate.rawFiducials()).mapToLong(id -> id.id()).toArray();
       SignalHandler.writeValue(signalPath + "/Tags/", tagIds);
     }
   }
@@ -38,7 +38,7 @@ public final class VisionHelper {
     // If our angular velocity is greater than 80 degrees per second
     if (Math.abs(swerveStateSupplier.get().Speeds.omegaRadiansPerSecond)
         > Units.degreesToRadians(80)) {
-      return new PoseEstimate();
+      return PoseEstimate.DEFAULT;
     }
     return mt;
   }

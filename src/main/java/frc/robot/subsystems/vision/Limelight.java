@@ -12,11 +12,11 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
-import frc.robot.RobotMode;
-import frc.robot.RobotMode.Mode;
 import frc.robot.LimelightHelpers;
 import frc.robot.LimelightHelpers.PoseEstimate;
 import frc.robot.LimelightHelpers.RawFiducial;
+import frc.robot.RobotMode;
+import frc.robot.RobotMode.Mode;
 import frc.robot.generated.TunerConstants;
 import frc.robot.utils.SignalHandler;
 import java.util.ArrayList;
@@ -69,22 +69,22 @@ public class Limelight implements Runnable {
         continue;
       }
       double xyStdDev = calculateXYStdDev(mt);
-      double thetaStdDev = mt.isMegaTag2 ? 9999999 : calculateThetaStdDev(mt);
+      double thetaStdDev = mt.isMegaTag2() ? 9999999 : calculateThetaStdDev(mt);
       SignalHandler.writeValue(
           "Odometry/" + limelightName,
-          new double[] {mt.pose.getX(), mt.pose.getY(), mt.pose.getRotation().getDegrees()});
+          new double[] {mt.pose().getX(), mt.pose().getY(), mt.pose().getRotation().getDegrees()});
       poseEstimates.add(new Pair<>(mt, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev)));
     }
     // Sort poseEstimates and send to consumer
     poseEstimates.stream()
         .sorted(
             Comparator.comparingDouble(
-                pair -> pair.getFirst().timestampSeconds - pair.getFirst().latency))
+                pair -> pair.getFirst().timestampSeconds() - pair.getFirst().latency()))
         .forEach(
             pair ->
                 poseConsumer.addVisionMeasurement(
-                    pair.getFirst().pose,
-                    pair.getFirst().timestampSeconds - pair.getFirst().latency,
+                    pair.getFirst().pose(),
+                    pair.getFirst().timestampSeconds() - pair.getFirst().latency(),
                     pair.getSecond()));
   }
 
@@ -105,7 +105,7 @@ public class Limelight implements Runnable {
 
     PoseEstimate mt = VisionHelper.filterPoseEstimate(mt1, mt2, swerveStateSupplier);
     if (Boolean.FALSE.equals(LimelightHelpers.validPoseEstimate(mt))) {
-      return new PoseEstimate();
+      return PoseEstimate.DEFAULT;
     }
 
     return mt;
@@ -119,7 +119,9 @@ public class Limelight implements Runnable {
    * @return The standard deviation of the x and y coordinates
    */
   private double calculateXYStdDev(PoseEstimate mt) {
-    return TunerConstants.visionStandardDeviationXY * Math.pow(mt.avgTagDist, 2.0) / mt.tagCount;
+    return TunerConstants.visionStandardDeviationXY
+        * Math.pow(mt.avgTagDist(), 2.0)
+        / mt.tagCount();
   }
 
   /**
@@ -130,21 +132,21 @@ public class Limelight implements Runnable {
    * @return The standard deviation of the theta coordinate
    */
   private double calculateThetaStdDev(PoseEstimate mt) {
-    return TunerConstants.visionStandardDeviationTheta * Math.pow(mt.avgTagDist, 2.0) / mt.tagCount;
+    return TunerConstants.visionStandardDeviationTheta
+        * Math.pow(mt.avgTagDist(), 2.0)
+        / mt.tagCount();
   }
 
   private PoseEstimate readPoseEstimate(String signalPath) {
-    PoseEstimate poseEstimate =
-        readPoseEstimateFromSignal(SignalHandler.readValue(signalPath, new double[] {}));
-    RawFiducial[] rawFiducials =
-        getFiducialsFromSignal(SignalHandler.readValue(signalPath + "/Tags/", new long[] {}));
-    poseEstimate.rawFiducials = rawFiducials;
-    return poseEstimate;
+    return readPoseEstimateFromSignal(
+        SignalHandler.readValue(signalPath, new double[] {}),
+        getFiducialsFromSignal(SignalHandler.readValue(signalPath + "/Tags/", new long[] {})));
   }
 
-  private PoseEstimate readPoseEstimateFromSignal(SignalData<double[]> signalData) {
+  private PoseEstimate readPoseEstimateFromSignal(
+      SignalData<double[]> signalData, RawFiducial[] fiducials) {
     if (signalData.status != StatusCode.OK) {
-      return new PoseEstimate();
+      return PoseEstimate.DEFAULT;
     }
     double[] data = signalData.value;
     return new PoseEstimate(
@@ -155,7 +157,7 @@ public class Limelight implements Runnable {
         0.0,
         data[6],
         0.0,
-        new RawFiducial[] {},
+        fiducials,
         data[7] == 1);
   }
 

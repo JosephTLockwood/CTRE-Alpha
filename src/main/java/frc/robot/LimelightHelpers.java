@@ -27,6 +27,7 @@ import java.net.URL;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.commons.lang3.StringUtils;
 
 public class LimelightHelpers {
 
@@ -367,120 +368,42 @@ public class LimelightHelpers {
     }
   }
 
-  public static class RawFiducial {
-    public int id = 0;
-    public double txnc = 0;
-    public double tync = 0;
-    public double ta = 0;
-    public double distToCamera = 0;
-    public double distToRobot = 0;
-    public double ambiguity = 0;
+  public record RawFiducial(
+      int id,
+      double txnc,
+      double tync,
+      double ta,
+      double distToCamera,
+      double distToRobot,
+      double ambiguity) {}
 
-    public RawFiducial(
-        int id,
-        double txnc,
-        double tync,
-        double ta,
-        double distToCamera,
-        double distToRobot,
-        double ambiguity) {
-      this.id = id;
-      this.txnc = txnc;
-      this.tync = tync;
-      this.ta = ta;
-      this.distToCamera = distToCamera;
-      this.distToRobot = distToRobot;
-      this.ambiguity = ambiguity;
-    }
-  }
+  public record RawDetection(
+      int classId,
+      double txnc,
+      double tync,
+      double ta,
+      double corner0_X,
+      double corner0_Y,
+      double corner1_X,
+      double corner1_Y,
+      double corner2_X,
+      double corner2_Y,
+      double corner3_X,
+      double corner3_Y) {}
 
-  public static class RawDetection {
-    public int classId = 0;
-    public double txnc = 0;
-    public double tync = 0;
-    public double ta = 0;
-    public double corner0_X = 0;
-    public double corner0_Y = 0;
-    public double corner1_X = 0;
-    public double corner1_Y = 0;
-    public double corner2_X = 0;
-    public double corner2_Y = 0;
-    public double corner3_X = 0;
-    public double corner3_Y = 0;
+  public record PoseEstimate(
+      Pose2d pose,
+      double timestampSeconds,
+      double latency,
+      int tagCount,
+      double tagSpan,
+      double avgTagDist,
+      double avgTagArea,
+      RawFiducial[] rawFiducials,
+      boolean isMegaTag2) {
 
-    public RawDetection(
-        int classId,
-        double txnc,
-        double tync,
-        double ta,
-        double corner0_X,
-        double corner0_Y,
-        double corner1_X,
-        double corner1_Y,
-        double corner2_X,
-        double corner2_Y,
-        double corner3_X,
-        double corner3_Y) {
-      this.classId = classId;
-      this.txnc = txnc;
-      this.tync = tync;
-      this.ta = ta;
-      this.corner0_X = corner0_X;
-      this.corner0_Y = corner0_Y;
-      this.corner1_X = corner1_X;
-      this.corner1_Y = corner1_Y;
-      this.corner2_X = corner2_X;
-      this.corner2_Y = corner2_Y;
-      this.corner3_X = corner3_X;
-      this.corner3_Y = corner3_Y;
-    }
-  }
-
-  public static class PoseEstimate {
-    public Pose2d pose;
-    public double timestampSeconds;
-    public double latency;
-    public int tagCount;
-    public double tagSpan;
-    public double avgTagDist;
-    public double avgTagArea;
-    public RawFiducial[] rawFiducials;
-    public boolean isMegaTag2;
-
-    /** Makes a PoseEstimate object with default values */
-    public PoseEstimate() {
-      this.pose = new Pose2d();
-      this.timestampSeconds = 0;
-      this.latency = 0;
-      this.tagCount = 0;
-      this.tagSpan = 0;
-      this.avgTagDist = 0;
-      this.avgTagArea = 0;
-      this.rawFiducials = new RawFiducial[] {};
-      this.isMegaTag2 = false;
-    }
-
-    public PoseEstimate(
-        Pose2d pose,
-        double timestampSeconds,
-        double latency,
-        int tagCount,
-        double tagSpan,
-        double avgTagDist,
-        double avgTagArea,
-        RawFiducial[] rawFiducials,
-        boolean isMegaTag2) {
-
-      this.pose = pose;
-      this.timestampSeconds = timestampSeconds;
-      this.latency = latency;
-      this.tagCount = tagCount;
-      this.tagSpan = tagSpan;
-      this.avgTagDist = avgTagDist;
-      this.avgTagArea = avgTagArea;
-      this.rawFiducials = rawFiducials;
-      this.isMegaTag2 = isMegaTag2;
-    }
+    public static final PoseEstimate DEFAULT =
+        new PoseEstimate(new Pose2d(), 0, 0, 0, 0, 0, 0, new RawFiducial[] {}, false);
   }
 
   private static ObjectMapper mapper;
@@ -489,7 +412,7 @@ public class LimelightHelpers {
   static boolean profileJSON = false;
 
   static final String sanitizeName(String name) {
-    if (name == "" || name == null) {
+    if (StringUtils.isNotBlank(name)) {
       return "limelight";
     }
     return name;
@@ -553,10 +476,11 @@ public class LimelightHelpers {
   }
 
   private static double extractArrayEntry(double[] inData, int position) {
-    if (inData.length < position + 1) {
-      return 0;
+    // if (inData.length < position + 1) {
+    if (inData != null && position < inData.length) {
+      return inData[position];
     }
-    return inData[position];
+    return 0;
   }
 
   private static PoseEstimate getBotPoseEstimate(
