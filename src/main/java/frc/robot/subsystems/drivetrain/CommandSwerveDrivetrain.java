@@ -217,7 +217,12 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
         this::getCurrentRobotChassisSpeeds,
         (speeds, feedforward) ->
             this.setControl(
-                AutoRequest.withSpeeds(speeds)), // Consumer of ChassisSpeeds to drive the robot
+                AutoRequest.withSpeeds(speeds)
+                    .withWheelForceFeedforwardsX(feedforward.robotRelativeForcesX())
+                    .withWheelForceFeedforwardsY(
+                        feedforward
+                            .robotRelativeForcesY())), // Consumer of ChassisSpeeds to drive the
+        // robot
         new PPHolonomicDriveController(new PIDConstants(10, 0, 0), new PIDConstants(10, 0, 0)),
         TunerConstants.robotConfig,
         () ->
