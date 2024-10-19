@@ -71,7 +71,7 @@ public class WheelRadiusCharacterization extends Command {
     currentEffectiveWheelRadius = 0.0;
     if (averageWheelPosition != 0.0) {
       currentEffectiveWheelRadius =
-          (accumGyroYawRads * TunerConstants.kRobotRadius.baseUnitMagnitude())
+          (accumGyroYawRads * TunerConstants.robotRadius.baseUnitMagnitude())
               / averageWheelPosition;
     }
 

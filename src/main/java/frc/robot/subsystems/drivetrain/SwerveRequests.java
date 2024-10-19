@@ -8,7 +8,7 @@ import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import com.ctre.phoenix6.swerve.SwerveModule;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.ctre.phoenix6.swerve.jni.SwerveJNI;
-import com.pathplanner.lib.util.DriveFeedforward;
+import com.pathplanner.lib.util.DriveFeedforwards;
 import com.pathplanner.lib.util.swerve.SwerveSetpoint;
 import com.pathplanner.lib.util.swerve.SwerveSetpointGenerator;
 import edu.wpi.first.math.MathUtil;
@@ -19,14 +19,11 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
-import edu.wpi.first.units.Angle;
-import edu.wpi.first.units.Distance;
-import edu.wpi.first.units.Measure;
-import edu.wpi.first.units.Velocity;
+import edu.wpi.first.units.measure.AngularVelocity;
+import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import frc.robot.generated.TunerConstants;
-import java.util.Arrays;
 import java.util.function.Supplier;
 
 public class SwerveRequests implements SwerveRequest {
@@ -93,10 +90,8 @@ public class SwerveRequests implements SwerveRequest {
           state.get().Speeds; // Method to get current robot-relative chassis speeds
       SwerveModuleState[] currentStates =
           state.get().ModuleStates; // Method to get the current swerve module states
-      DriveFeedforward[] currentFeedforwards =
-          new DriveFeedforward
-              [TunerConstants.robotConfig.numModules]; // Method to get the current feedforwards
-      Arrays.fill(currentFeedforwards, new DriveFeedforward(0, 0, 0));
+      DriveFeedforwards currentFeedforwards =
+          DriveFeedforwards.zeros(TunerConstants.robotConfig.numModules);
       previousSetpoint = new SwerveSetpoint(currentSpeeds, currentStates, currentFeedforwards);
     }
 
@@ -128,7 +123,7 @@ public class SwerveRequests implements SwerveRequest {
      * @param newVelocityX Parameter to modify
      * @return this object
      */
-    public FieldCentricSwerveSetpoint withVelocityX(Measure<Velocity<Distance>> newVelocityX) {
+    public FieldCentricSwerveSetpoint withVelocityX(LinearVelocity newVelocityX) {
       this.VelocityX = newVelocityX.in(MetersPerSecond);
       return this;
     }
@@ -156,7 +151,7 @@ public class SwerveRequests implements SwerveRequest {
      * @param newVelocityY Parameter to modify
      * @return this object
      */
-    public FieldCentricSwerveSetpoint withVelocityY(Measure<Velocity<Distance>> newVelocityY) {
+    public FieldCentricSwerveSetpoint withVelocityY(LinearVelocity newVelocityY) {
       this.VelocityY = newVelocityY.in(MetersPerSecond);
       return this;
     }
@@ -184,8 +179,7 @@ public class SwerveRequests implements SwerveRequest {
      * @param newRotationalRate Parameter to modify
      * @return this object
      */
-    public FieldCentricSwerveSetpoint withRotationalRate(
-        Measure<Velocity<Angle>> newRotationalRate) {
+    public FieldCentricSwerveSetpoint withRotationalRate(AngularVelocity newRotationalRate) {
       this.RotationalRate = newRotationalRate.in(RadiansPerSecond);
       return this;
     }
@@ -211,7 +205,7 @@ public class SwerveRequests implements SwerveRequest {
      * @param newDeadband Parameter to modify
      * @return this object
      */
-    public FieldCentricSwerveSetpoint withDeadband(Measure<Velocity<Distance>> newDeadband) {
+    public FieldCentricSwerveSetpoint withDeadband(LinearVelocity newDeadband) {
       this.Deadband = newDeadband.in(MetersPerSecond);
       return this;
     }
@@ -238,7 +232,7 @@ public class SwerveRequests implements SwerveRequest {
      * @return this object
      */
     public FieldCentricSwerveSetpoint withRotationalDeadband(
-        Measure<Velocity<Angle>> newRotationalDeadband) {
+        AngularVelocity newRotationalDeadband) {
       this.RotationalDeadband = newRotationalDeadband.in(RadiansPerSecond);
       return this;
     }
@@ -286,17 +280,20 @@ public class SwerveRequests implements SwerveRequest {
     }
 
     public void applyNative(int id) {
-      setSwerveSpeed(
-          this.VelocityX,
-          this.VelocityY,
-          this.RotationalRate,
-          this.Deadband,
-          this.RotationalDeadband);
+      SwerveSetpoint setPoint =
+          setSwerveSpeed(
+              this.VelocityX,
+              this.VelocityY,
+              this.RotationalRate,
+              this.Deadband,
+              this.RotationalDeadband);
       SwerveJNI.JNI_SetControl_ApplyChassisSpeeds(
           id,
-          Speeds.vxMetersPerSecond,
-          Speeds.vyMetersPerSecond,
-          Speeds.omegaRadiansPerSecond,
+          setPoint.robotRelativeSpeeds().vxMetersPerSecond,
+          setPoint.robotRelativeSpeeds().vyMetersPerSecond,
+          setPoint.robotRelativeSpeeds().omegaRadiansPerSecond,
+          setPoint.feedforwards().robotRelativeForcesXNewtons(),
+          setPoint.feedforwards().robotRelativeForcesYNewtons(),
           CenterOfRotation.getX(),
           CenterOfRotation.getY(),
           DriveRequestType.value,
@@ -304,7 +301,7 @@ public class SwerveRequests implements SwerveRequest {
           DesaturateWheelSpeeds);
     }
 
-    private void setSwerveSpeed(
+    private SwerveSetpoint setSwerveSpeed(
         double VelocityX,
         double VelocityY,
         double RotationalRate,
@@ -329,11 +326,11 @@ public class SwerveRequests implements SwerveRequest {
           DriverStation.getAlliance().isPresent()
               && DriverStation.getAlliance().get() == Alliance.Red;
 
-      Measure<Velocity<Distance>> robotRelativeXVel =
+      LinearVelocity robotRelativeXVel =
           TunerConstants.kSpeedAt12Volts.times(linearVelocity.getX());
-      Measure<Velocity<Distance>> robotRelativeYVel =
+      LinearVelocity robotRelativeYVel =
           TunerConstants.kSpeedAt12Volts.times(linearVelocity.getY());
-      Measure<Velocity<Angle>> robotRelativeOmega = TunerConstants.kRotationAt12Volts.times(omega);
+      AngularVelocity robotRelativeOmega = TunerConstants.kRotationAt12Volts.times(omega);
       ChassisSpeeds chassisSpeeds =
           ChassisSpeeds.fromFieldRelativeSpeeds(
               robotRelativeXVel,
@@ -342,28 +339,13 @@ public class SwerveRequests implements SwerveRequest {
               isFlipped
                   ? state.get().Pose.getRotation().plus(new Rotation2d(Math.PI))
                   : state.get().Pose.getRotation());
-      chassisSpeeds = setPointGenerator(chassisSpeeds);
-      Speeds.vxMetersPerSecond = chassisSpeeds.vxMetersPerSecond;
-      Speeds.vyMetersPerSecond = chassisSpeeds.vyMetersPerSecond;
-      Speeds.omegaRadiansPerSecond = chassisSpeeds.omegaRadiansPerSecond;
-    }
-
-    /**
-     * This method will take in desired robot-relative chassis speeds, generate a swerve setpoint,
-     * then set the target state for each module
-     *
-     * @param speeds The desired robot-relative speeds
-     */
-    public ChassisSpeeds setPointGenerator(ChassisSpeeds speeds) {
-      // Note: it is important to not discretize speeds before or after
-      // using the setpoint generator, as it will discretize them for you
       previousSetpoint =
           setpointGenerator.generateSetpoint(
               previousSetpoint, // The previous setpoint
-              speeds, // The desired target speeds
+              chassisSpeeds, // The desired target speeds
               0.02 // The loop time of the robot code, in seconds
               );
-      return previousSetpoint.robotRelativeSpeeds();
+      return previousSetpoint;
     }
   }
 

@@ -6,9 +6,9 @@ package frc.robot;
 
 import static edu.wpi.first.units.Units.*;
 
+import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
-import com.ctre.phoenix6.swerve.SwerveModule.SteerRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -21,63 +21,58 @@ import frc.robot.subsystems.drivetrain.CommandSwerveDrivetrain;
 import frc.robot.subsystems.drivetrain.SwerveRequests;
 
 public class RobotContainer {
+  private double MaxSpeed =
+      TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts desired top speed
+  private double MaxAngularRate =
+      RotationsPerSecond.of(0.75)
+          .in(RadiansPerSecond); // 3/4 of a rotation per second max angular velocity
+
   /* Setting up bindings for necessary control of the swerve drive platform */
   private final CommandXboxController joystick = new CommandXboxController(0);
   public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
+  /* Setting up bindings for necessary control of the swerve drive platform */
   private final SwerveRequests.FieldCentricSwerveSetpoint drive =
       new SwerveRequests.FieldCentricSwerveSetpoint(drivetrain::getState)
-          .withDriveRequestType(DriveRequestType.Velocity)
-          .withSteerRequestType(SteerRequestType.MotionMagicExpo)
-          .withDeadband(TunerConstants.kSpeedAt12Volts.times(0.1))
-          .withRotationalDeadband(
-              TunerConstants.kRotationAt12Volts.times(
-                  0.1)); // Add a 10% deadband based on the max speed
-  // driving in open loop
+          .withDeadband(MaxSpeed * 0.1)
+          .withRotationalDeadband(MaxAngularRate * 0.1) // Add a 10% deadband
+          .withDriveRequestType(
+              DriveRequestType.OpenLoopVoltage); // Use open-loop control for drive motors
   private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
   private final SwerveRequest.PointWheelsAt point = new SwerveRequest.PointWheelsAt();
-
   private final Telemetry logger =
       new Telemetry(TunerConstants.kSpeedAt12Volts.in(MetersPerSecond));
 
   private void configureBindings() {
     // Note that X is defined as forward according to WPILib convention,
     // and Y is defined as to the left according to WPILib convention.
-    drivetrain.setDefaultCommand( // Drivetrain will execute this command periodically
+    drivetrain.setDefaultCommand(
+        // Drivetrain will execute this command periodically
         drivetrain.applyRequest(
             () ->
                 drive
                     .withVelocityX(
-                        TunerConstants.kSpeedAt12Volts.times(
-                            -joystick.getLeftY())) // Drive forward with
-                    // negative Y (forward)
+                        -joystick.getLeftY() * MaxSpeed) // Drive forward with negative Y (forward)
                     .withVelocityY(
-                        TunerConstants.kSpeedAt12Volts.times(
-                            -joystick.getLeftX())) // Drive left with negative X (left)
+                        -joystick.getLeftX() * MaxSpeed) // Drive left with negative X (left)
                     .withRotationalRate(
-                        TunerConstants.kRotationAt12Volts.times(-joystick.getRightX()))
-            // Drive counterclockwise with negative X (left)
+                        -joystick.getRightX()
+                            * MaxAngularRate) // Drive counterclockwise with negative X (left)
             ));
 
-    joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
-    joystick.x().whileTrue(drivetrain.sysIdDynamic(Direction.kForward));
-    joystick.y().whileTrue(drivetrain.sysIdDynamic(Direction.kReverse));
     joystick
-        .rightBumper()
-        .whileTrue(
-            drivetrain.applyRequest(() -> point.withModuleDirection(Rotation2d.fromDegrees(0))));
-    joystick.start().whileTrue(drivetrain.sysIdDynamic(Direction.kForward));
-    joystick.back().whileTrue(drivetrain.sysIdDynamic(Direction.kReverse));
-    joystick
-        .b()
-        .whileTrue(
-            drivetrain.applyRequest(
-                () ->
-                    point.withModuleDirection(
-                        new Rotation2d(-joystick.getLeftY(), -joystick.getLeftX()))));
+        .leftTrigger()
+        .whileTrue(drivetrain.applyRequest(() -> point.withModuleDirection(Rotation2d.kZero)));
 
-    // reset the field-centric heading on left bumper press
-    joystick.leftBumper().onTrue(drivetrain.runOnce(drivetrain::seedFieldRelative));
+    joystick.leftBumper().onTrue(Commands.runOnce(SignalLogger::start).withName("LOGGING"));
+    joystick.rightBumper().onTrue(Commands.runOnce(SignalLogger::stop));
+
+    // Run SysId routines when holding back/start and X/Y.
+    // Note that each routine should be run exactly once in a single log.
+    joystick.y().whileTrue(drivetrain.sysIdDynamic(Direction.kForward));
+    joystick.a().whileTrue(drivetrain.sysIdDynamic(Direction.kReverse));
+    joystick.b().whileTrue(drivetrain.sysIdQuasistatic(Direction.kForward));
+    joystick.x().whileTrue(drivetrain.sysIdQuasistatic(Direction.kReverse));
 
     if (Utils.isSimulation()) {
       drivetrain.seedFieldRelative(new Pose2d());
