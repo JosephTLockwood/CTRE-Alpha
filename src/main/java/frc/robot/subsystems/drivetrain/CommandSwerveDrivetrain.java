@@ -18,8 +18,6 @@ import com.pathplanner.lib.util.DriveFeedforwards;
 import com.pathplanner.lib.util.swerve.SwerveSetpoint;
 import com.pathplanner.lib.util.swerve.SwerveSetpointGenerator;
 import edu.wpi.first.math.Matrix;
-import edu.wpi.first.math.Pair;
-import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
@@ -35,16 +33,12 @@ import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
-import frc.robot.LimelightHelpers;
-import frc.robot.LimelightHelpers.PoseEstimate;
-import frc.robot.RobotMode;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.vision.Limelight;
 // import frc.robot.subsystems.vision.PhotonVisionSIM;
 import frc.robot.subsystems.vision.VisionProvider;
 import frc.robot.subsystems.vision.VisionReplay;
 import java.util.Arrays;
-import java.util.List;
 import java.util.function.Supplier;
 
 /**
@@ -62,6 +56,9 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
       new Transform3d[] {
         (new Transform3d(new Translation3d(0.1, 0, 0.5), new Rotation3d(0, Math.toRadians(-15), 0)))
       };
+
+  private final VisionProvider limelightVision = new Limelight(cameras, this::getState);
+  private final VisionProvider replayVision = new VisionReplay(cameras, this::getState);
 
   /* Blue alliance sees forward as 0 degrees (toward red alliance wall) */
   private static final Rotation2d kBlueAlliancePerspectiveRotation = Rotation2d.fromDegrees(0);
@@ -88,10 +85,6 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
       new SwerveRequest.SysIdSwerveRotation();
 
   /* SysId routine for characterizing translation. This is used to find PID gains for the drive motors. */
-
-  private final VisionProvider limelightVision = new Limelight(cameras, this::getState);
-
-  private final VisionProvider replayVision = new VisionReplay(cameras, this::getState);
   private final SysIdRoutine m_sysIdRoutineTranslation =
       new SysIdRoutine(
           new SysIdRoutine.Config(
@@ -346,36 +339,37 @@ public class CommandSwerveDrivetrain extends SwerveDrivetrain implements Subsyst
   }
 
   private void startVisionThread() {
-    VisionProvider visionProvider;
-    switch (RobotMode.getMode()) {
-        // case SIM:
-        //   visionProvider = photonVision;
-        //   break;
-      case REAL:
-        visionProvider = limelightVision;
-        break;
-      default:
-        visionProvider = replayVision;
-        break;
-    }
-    m_visionNotifier =
-        new Notifier(
-            () -> {
-              List<Pair<PoseEstimate, Vector<N3>>> visionMeasurement =
-                  visionProvider.updateVisionMeasurements();
-              for (Pair<PoseEstimate, Vector<N3>> measurement : visionMeasurement) {
-                // This check should not be necessary (current code only adds valid poses to list),
-                // but it
-                // is here to ensure that the all poses are valid with other implementations
-                if (Boolean.TRUE.equals(
-                    LimelightHelpers.validPoseEstimate(measurement.getFirst()))) {
-                  addVisionMeasurement(
-                      measurement.getFirst().pose,
-                      measurement.getFirst().timestampSeconds,
-                      measurement.getSecond());
-                }
-              }
-            });
-    m_visionNotifier.startPeriodic(kSimLoopPeriod);
+    // VisionProvider visionProvider;
+    // switch (RobotMode.getMode()) {
+    //   case SIM:
+    //     visionProvider = photonVision;
+    //     break;
+    //   case REAL:
+    //     visionProvider = limelightVision;
+    //     break;
+    //   default:
+    //     visionProvider = replayVision;
+    //     break;
+    // }
+    // m_visionNotifier =
+    //     new Notifier(
+    //         () -> {
+    //           List<Pair<PoseEstimate, Vector<N3>>> visionMeasurement =
+    //               visionProvider.updateVisionMeasurements();
+    //           for (Pair<PoseEstimate, Vector<N3>> measurement : visionMeasurement) {
+    //             // This check should not be necessary (current code only adds valid poses to
+    // list),
+    //             // but it
+    //             // is here to ensure that the all poses are valid with other implementations
+    //             if (Boolean.TRUE.equals(
+    //                 LimelightHelpers.validPoseEstimate(measurement.getFirst()))) {
+    //               addVisionMeasurement(
+    //                   measurement.getFirst().pose,
+    //                   measurement.getFirst().timestampSeconds,
+    //                   measurement.getSecond());
+    //             }
+    //           }
+    //         });
+    // m_visionNotifier.startPeriodic(kSimLoopPeriod);
   }
 }
