@@ -82,7 +82,7 @@ public class SwerveRequests implements SwerveRequest {
      * Whether to desaturate wheel speeds before applying. For more information, see the
      * documentation of {@link SwerveDriveKinematics#desaturateWheelSpeeds}.
      */
-    public boolean DesaturateWheelSpeeds = true;
+    public boolean DesaturateWheelSpeeds = false;
 
     public FieldCentricSwerveSetpoint(Supplier<SwerveDriveState> state) {
       this.state = state;
@@ -298,7 +298,7 @@ public class SwerveRequests implements SwerveRequest {
           CenterOfRotation.getY(),
           DriveRequestType.value,
           SteerRequestType.value,
-          DesaturateWheelSpeeds);
+          false);
     }
 
     private SwerveSetpoint setSwerveSpeed(
