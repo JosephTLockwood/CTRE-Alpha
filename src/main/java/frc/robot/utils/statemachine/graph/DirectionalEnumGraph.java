@@ -6,6 +6,7 @@ import java.util.*;
 public class DirectionalEnumGraph<V extends Enum<V>, T extends TransitionBase<? extends Enum<V>>> {
   // Array where the index [1][2] = TransitionBase from state at ordinal 1 to state at ordinal 2
   private final Object[][] adjacencyMap;
+  //  private final Map<>
   private final Class<V> enumType;
 
   public DirectionalEnumGraph(Class<V> enumType) {

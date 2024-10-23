@@ -404,6 +404,19 @@ public class LimelightHelpers {
 
     public static final PoseEstimate DEFAULT =
         new PoseEstimate(new Pose2d(), 0, 0, 0, 0, 0, 0, new RawFiducial[] {}, false);
+
+    public PoseEstimate(PoseEstimate originalEstimate, double timestampSeconds) {
+      this(
+          originalEstimate.pose,
+          timestampSeconds,
+          originalEstimate.latency,
+          originalEstimate.tagCount,
+          originalEstimate.tagSpan,
+          originalEstimate.avgTagDist,
+          originalEstimate.avgTagArea,
+          originalEstimate.rawFiducials,
+          originalEstimate.isMegaTag2);
+    }
   }
 
   private static ObjectMapper mapper;
